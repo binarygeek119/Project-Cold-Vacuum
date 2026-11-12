@@ -37,6 +37,11 @@ public class ShipController : MonoBehaviour
     public float triggerDeadzone = 0.1f;
     public bool rumbleEnabled = true;
 
+    [Header("Thrusters (flames)")]
+    public ParticleSystem[] thrusters;
+    public float thrusterMinEmission = 8f;
+    public float thrusterMaxEmission = 70f;
+
     [Header("Keyboard")]
     public float mouseSensitivity = 0.1f;
 
@@ -133,6 +138,25 @@ public class ShipController : MonoBehaviour
             _velocity = _velocity.normalized * maxSpeed;
         if (_velocity.magnitude < minSpeed && _velocity.magnitude > 0f && thrust <= triggerDeadzone && brake <= triggerDeadzone)
             _velocity = Vector3.zero; // allow stop when coasting to 0
+
+        // --- thruster flames ---
+        if (thrusters != null)
+        {
+            float t = Mathf.Clamp01(thrust);
+            float emRate = Mathf.Lerp(thrusterMinEmission, thrusterMaxEmission, t);
+            float spd = Mathf.Lerp(2f, 7f, t);
+            float sz = Mathf.Lerp(0.25f, 0.45f, t);
+            foreach (var ps in thrusters)
+            {
+                if (ps == null) continue;
+                var em = ps.emission;
+                em.rateOverTime = emRate;
+                var m = ps.main;
+                m.startSpeed = spd;
+                m.startSize = sz;
+                if (!ps.isPlaying) ps.Play();
+            }
+        }
 
         transform.position += _velocity * Time.deltaTime;
 
