@@ -15,10 +15,10 @@ using UnityEngine.InputSystem;
 public class ShipController : MonoBehaviour
 {
     [Header("Thrust")]
-    public float thrustAcceleration = 18f;   // acceleration while thrusting
-    public float brakeDeceleration = 25f;    // deceleration while braking
-    public float passiveDrag = 4f;           // drag when neither thrust nor brake
-    public float maxSpeed = 60f;
+    public float thrustAcceleration = 40f;   // acceleration while thrusting
+    public float brakeDeceleration = 40f;    // deceleration while braking
+    public float passiveDrag = 2f;           // drag when neither thrust nor brake
+    public float maxSpeed = 150f;
     public float minSpeed = 0f;              // allow full stop
 
     [Header("Steering")]
