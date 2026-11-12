@@ -461,19 +461,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0275ee74571a65f8a8b4ceb145f6a7f0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ShipController
-  moveSpeed: 12
-  acceleration: 6
-  drag: 3
-  boostMultiplier: 2.5
-  turnSpeed: 150
+  thrustAcceleration: 18
+  brakeDeceleration: 25
+  passiveDrag: 4
+  maxSpeed: 60
+  minSpeed: 0
+  pitchSpeed: 90
+  yawSpeed: 90
+  rollSpeed: 120
   rotationSmooth: 8
   pitchLimit: 60
-  mouseSensitivity: 0.1
   maxBank: 45
   bankSpeed: 6
   stickDeadzone: 0.15
   triggerDeadzone: 0.1
   rumbleEnabled: 1
+  mouseSensitivity: 0.1
 --- !u!4 &1176292530
 Transform:
   m_ObjectHideFlags: 0

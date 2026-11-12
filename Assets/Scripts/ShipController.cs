@@ -2,36 +2,49 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 /// <summary>
-/// Flight-like ship controller. Supports Xbox/Gamepad (preferred) and
-/// keyboard + mouse fallback so it can be tested without a controller.
+/// Star Wars: Battlefront 2 (2005)-style starfighter flight.
+///  - Right trigger = thrust (hold to accelerate; release to coast with drag)
+///  - Left trigger  = brake
+///  - Left stick    = pitch (Y) + yaw (X) steering
+///  - Bumpers       = roll
+///  - Right stick   = (unused / free-look trim)
+///  - A button      = fire (placeholder)
+/// Momentum + inertia + banking into turns.
+/// Keyboard fallback: W/S pitch, A/D yaw, Space thrust, Shift brake, Q/E roll, mouse fine-aim.
 /// </summary>
 public class ShipController : MonoBehaviour
 {
-    [Header("Movement")]
-    public float moveSpeed = 12f;
-    public float acceleration = 6f;
-    public float drag = 3f;
-    public float boostMultiplier = 2.5f;
+    [Header("Thrust")]
+    public float thrustAcceleration = 18f;   // acceleration while thrusting
+    public float brakeDeceleration = 25f;    // deceleration while braking
+    public float passiveDrag = 4f;           // drag when neither thrust nor brake
+    public float maxSpeed = 60f;
+    public float minSpeed = 0f;              // allow full stop
 
-    [Header("Rotation")]
-    public float turnSpeed = 150f;
-    public float rotationSmooth = 8f;
-    public float pitchLimit = 60f;
-    public float mouseSensitivity = 0.1f;
+    [Header("Steering")]
+    public float pitchSpeed = 90f;           // deg/s at full stick
+    public float yawSpeed = 90f;
+    public float rollSpeed = 120f;
+    public float rotationSmooth = 6f;
+    public float pitchLimit = 80f;
 
     [Header("Banking")]
-    public float maxBank = 45f;
-    public float bankSpeed = 6f;
+    public float maxBank = 60f;
+    public float bankSpeed = 5f;
 
     [Header("Xbox / Gamepad")]
     public float stickDeadzone = 0.15f;
     public float triggerDeadzone = 0.1f;
     public bool rumbleEnabled = true;
 
+    [Header("Keyboard")]
+    public float mouseSensitivity = 0.1f;
+
     private Vector3 _velocity;
     private float _yaw;
     private float _pitch;
     private float _bank;
+    private float _rollInput;
 
     void Start()
     {
@@ -42,30 +55,33 @@ public class ShipController : MonoBehaviour
 
     void Update()
     {
-        Vector2 move = Vector2.zero;
-        Vector2 look = Vector2.zero;
-        float boost = 0f;
-        bool ascend = false, descend = false;
+        float pitchInput = 0f;
+        float yawInput = 0f;
         float rollInput = 0f;
+        float thrust = 0f;   // 0..1
+        float brake = 0f;    // 0..1
         bool fire = false;
 
         var gp = Gamepad.current;
         if (gp != null)
         {
-            move = ApplyDeadzone(gp.leftStick.ReadValue(), stickDeadzone);
-            look = ApplyDeadzone(gp.rightStick.ReadValue(), stickDeadzone);
-            boost = gp.rightTrigger.ReadValue();
-            if (gp.leftStickButton.isPressed) ascend = true;
-            if (gp.rightStickButton.isPressed) descend = true;
-            if (gp.leftShoulder.isPressed) rollInput += 1f;
-            if (gp.rightShoulder.isPressed) rollInput -= 1f;
+            Vector2 steer = ApplyDeadzone(gp.leftStick.ReadValue(), stickDeadzone);
+            pitchInput = -steer.y;     // up on stick = pitch up
+            yawInput = steer.x;
+            thrust = gp.rightTrigger.ReadValue();
+            brake = gp.leftTrigger.ReadValue();
+            if (gp.leftShoulder.isPressed) rollInput -= 1f;
+            if (gp.rightShoulder.isPressed) rollInput += 1f;
+            // right stick fine-trim
+            Vector2 trim = ApplyDeadzone(gp.rightStick.ReadValue(), stickDeadzone);
+            yawInput += trim.x * 0.4f;
+            pitchInput += -trim.y * 0.4f;
             fire = gp.buttonSouth.wasPressedThisFrame;
 
-            // rumble
             if (rumbleEnabled)
             {
-                if (boost > triggerDeadzone)
-                    gp.SetMotorSpeeds(0.25f, 0.5f * boost);
+                if (thrust > triggerDeadzone)
+                    gp.SetMotorSpeeds(0.15f, 0.35f * thrust);
                 else
                     gp.SetMotorSpeeds(0f, 0f);
                 if (fire)
@@ -77,63 +93,62 @@ public class ShipController : MonoBehaviour
         }
         else
         {
-            // keyboard + mouse fallback
             var kb = Keyboard.current;
             var mouse = Mouse.current;
             if (kb != null)
             {
-                if (kb.wKey.isPressed) move.y += 1f;
-                if (kb.sKey.isPressed) move.y -= 1f;
-                if (kb.aKey.isPressed) move.x -= 1f;
-                if (kb.dKey.isPressed) move.x += 1f;
-                if (kb.spaceKey.isPressed) ascend = true;
-                if (kb.leftCtrlKey.isPressed) descend = true;
-                if (kb.leftShiftKey.isPressed) boost = 1f;
-                if (kb.qKey.isPressed) rollInput += 1f;
-                if (kb.eKey.isPressed) rollInput -= 1f;
-                fire = kb.spaceKey.wasPressedThisFrame; // space also fires when tapped
+                if (kb.wKey.isPressed) pitchInput += 1f;
+                if (kb.sKey.isPressed) pitchInput -= 1f;
+                if (kb.aKey.isPressed) yawInput -= 1f;
+                if (kb.dKey.isPressed) yawInput += 1f;
+                if (kb.qKey.isPressed) rollInput -= 1f;
+                if (kb.eKey.isPressed) rollInput += 1f;
+                if (kb.spaceKey.isPressed) thrust = 1f;
+                if (kb.leftShiftKey.isPressed) brake = 1f;
             }
             if (mouse != null)
             {
                 Vector2 md = mouse.delta.ReadValue();
-                look = md * mouseSensitivity;
+                yawInput += md.x * mouseSensitivity * 0.05f;
+                pitchInput += -md.y * mouseSensitivity * 0.05f;
                 if (mouse.leftButton.wasPressedThisFrame) fire = true;
             }
-            move = Vector2.ClampMagnitude(move, 1f);
         }
 
-        if (ascend) move.y += 1f; // reuse move.y for vertical? handled below
-        // vertical stored separately
-        float vert = 0f;
-        if (ascend) vert += 1f;
-        if (descend) vert -= 1f;
-
-        // --- desired velocity (local -> world) ---
-        Vector3 localDesired = new Vector3(move.x, vert, move.y);
-        float speed = moveSpeed;
-        if (boost > triggerDeadzone) speed *= boostMultiplier;
-
-        Vector3 worldDesired = transform.TransformDirection(localDesired.normalized) * (localDesired.magnitude * speed);
-
-        // accelerate toward desired, with drag when idle
-        _velocity = Vector3.Lerp(_velocity, worldDesired, acceleration * Time.deltaTime);
-        if (localDesired.sqrMagnitude < 0.01f && Mathf.Abs(vert) < 0.01f)
-            _velocity = Vector3.Lerp(_velocity, Vector3.zero, drag * Time.deltaTime);
+        // --- thrust / speed ---
+        float currentSpeed = _velocity.magnitude;
+        if (thrust > triggerDeadzone)
+        {
+            _velocity += transform.forward * (thrustAcceleration * thrust * Time.deltaTime);
+        }
+        if (brake > triggerDeadzone)
+        {
+            _velocity -= _velocity.normalized * (brakeDeceleration * brake * Time.deltaTime);
+            if (_velocity.magnitude < 0.5f) _velocity = Vector3.zero;
+        }
+        // passive drag
+        _velocity = Vector3.Lerp(_velocity, Vector3.zero, passiveDrag * Time.deltaTime);
+        // clamp speed
+        if (_velocity.magnitude > maxSpeed)
+            _velocity = _velocity.normalized * maxSpeed;
+        if (_velocity.magnitude < minSpeed && _velocity.magnitude > 0f && thrust <= triggerDeadzone && brake <= triggerDeadzone)
+            _velocity = Vector3.zero; // allow stop when coasting to 0
 
         transform.position += _velocity * Time.deltaTime;
 
         // --- rotation targets ---
-        _yaw += look.x * turnSpeed * Time.deltaTime;
-        _pitch += -look.y * turnSpeed * 0.5f * Time.deltaTime;
+        _yaw += yawInput * yawSpeed * Time.deltaTime;
+        _pitch += pitchInput * pitchSpeed * Time.deltaTime;
         _pitch = Mathf.Clamp(_pitch, -pitchLimit, pitchLimit);
 
-        // banking
-        float targetBank = -move.x * maxBank;
-        if (Mathf.Abs(move.x) < 0.05f && gp != null) targetBank = -look.x * maxBank * 0.4f;
-        if (rollInput > 0f) targetBank += maxBank;
-        if (rollInput < 0f) targetBank -= maxBank;
+        // banking: roll into yaw
+        float targetBank = -yawInput * maxBank * 0.6f + rollInput * maxBank;
         targetBank = Mathf.Clamp(targetBank, -maxBank, maxBank);
         _bank = Mathf.Lerp(_bank, targetBank, bankSpeed * Time.deltaTime);
+
+        float roll = rollInput * rollSpeed * Time.deltaTime;
+        _yaw += 0f; // yaw already applied
+        // apply roll to bank only (visual), not yaw
 
         Quaternion targetRot = Quaternion.Euler(_pitch, _yaw, _bank);
         transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, rotationSmooth * Time.deltaTime);
