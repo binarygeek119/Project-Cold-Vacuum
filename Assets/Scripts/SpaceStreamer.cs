@@ -13,7 +13,7 @@ public class SpaceStreamer : MonoBehaviour
     public float chunkSize = 100f;
     public int loadRadius = 1;     // chunks (cube) loaded around target
     public int unloadRadius = 2;   // chunks beyond this are unloaded
-    public int asteroidsPerChunk = 5;
+    public int asteroidsPerChunk = 2;
     public int maxSpawnsPerFrame = 4;
     public int maxDestroysPerFrame = 4;
 
@@ -171,6 +171,7 @@ public class SpaceStreamer : MonoBehaviour
         if (asteroidPrefab != null)
         {
             go = Instantiate(asteroidPrefab);
+            foreach (var c in go.GetComponentsInChildren<Collider>()) UnityEngine.Object.Destroy(c);
         }
         else
         {
