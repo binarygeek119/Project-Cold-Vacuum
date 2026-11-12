@@ -2,36 +2,26 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 /// <summary>
-/// Star Wars: Battlefront 2 (2005)-style starfighter flight.
-///  - Right trigger = thrust (hold to accelerate; release to coast with drag)
-///  - Left trigger  = brake
-///  - Left stick    = pitch (Y) + yaw (X) steering
-///  - Bumpers       = roll
-///  - Right stick   = (unused / free-look trim)
-///  - A button      = fire (placeholder)
-/// Momentum + inertia + banking into turns.
-/// Keyboard fallback: W/S pitch, A/D yaw, Space thrust, Shift brake, Q/E roll, mouse fine-aim.
+/// Physics-based starfighter flight (Rigidbody). BF2(2005)-style feel:
+/// thrust on right trigger, brake on left, pitch/yaw steering, roll, momentum.
+/// Uses forces/torque so collisions and inertia are physical.
 /// </summary>
 public class ShipController : MonoBehaviour
 {
     [Header("Thrust")]
-    public float thrustAcceleration = 40f;   // acceleration while thrusting
-    public float brakeDeceleration = 40f;    // deceleration while braking
-    public float passiveDrag = 2f;           // drag when neither thrust nor brake
+    public float thrustForce = 60f;          // acceleration while thrusting
+    public float brakeForce = 80f;          // deceleration while braking
     public float maxSpeed = 150f;
-    public float minSpeed = 0f;              // allow full stop
 
-    [Header("Steering")]
-    public float pitchSpeed = 90f;           // deg/s at full stick
-    public float yawSpeed = 90f;
-    public float rollSpeed = 120f;
-    public float rotationSmooth = 6f;
+    [Header("Steering (torque)")]
+    public float pitchTorque = 40f;
+    public float yawTorque = 40f;
+    public float rollTorque = 60f;
+    public float angularDamping = 4f;
     public float pitchLimit = 80f;
-    public bool invertPitch = true;
 
     [Header("Banking")]
     public float maxBank = 60f;
-    public float bankSpeed = 5f;
 
     [Header("Xbox / Gamepad")]
     public float stickDeadzone = 0.15f;
@@ -45,44 +35,53 @@ public class ShipController : MonoBehaviour
     [Header("Keyboard")]
     public float mouseSensitivity = 0.1f;
 
-    private Vector3 _velocity;
-    private float _yaw;
-    private float _pitch;
-    private float _bank;
-    private float _rollInput;
+    [Header("Pitch")]
+    public bool invertPitch = true;
 
-    void Start()
+    private Rigidbody _rb;
+    private float _bank;
+    private float _yawAccum;   // for banking visual only
+
+    void Awake()
     {
-        var e = transform.eulerAngles;
-        _yaw = e.y;
-        _pitch = e.x;
+        _rb = GetComponent<Rigidbody>();
+        if (_rb == null) _rb = gameObject.AddComponent<Rigidbody>();
+        _rb.useGravity = false;
+        _rb.linearDamping = 0.5f;
+        _rb.angularDamping = angularDamping;
+        _rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+        _rb.interpolation = RigidbodyInterpolation.Interpolate;
     }
 
     void Update()
     {
+        // banking visual (smooth tilt of the model child) — driven by yaw input
+        // (handled in FixedUpdate via torque; here we just keep thrusters in sync)
+    }
+
+    void FixedUpdate()
+    {
         float pitchInput = 0f;
         float yawInput = 0f;
         float rollInput = 0f;
-        float thrust = 0f;   // 0..1
-        float brake = 0f;    // 0..1
+        float thrust = 0f;
+        float brake = 0f;
         bool fire = false;
 
         var gp = Gamepad.current;
         if (gp != null)
         {
             Vector2 steer = ApplyDeadzone(gp.leftStick.ReadValue(), stickDeadzone);
-            pitchInput = -steer.y;     // up on stick = pitch up
+            pitchInput = -steer.y;
             yawInput = steer.x;
             thrust = gp.rightTrigger.ReadValue();
             brake = gp.leftTrigger.ReadValue();
             if (gp.leftShoulder.isPressed) rollInput -= 1f;
             if (gp.rightShoulder.isPressed) rollInput += 1f;
-            // right stick fine-trim
             Vector2 trim = ApplyDeadzone(gp.rightStick.ReadValue(), stickDeadzone);
             yawInput += trim.x * 0.4f;
             pitchInput += -trim.y * 0.4f;
             fire = gp.buttonSouth.wasPressedThisFrame;
-
         }
         else
         {
@@ -98,36 +97,47 @@ public class ShipController : MonoBehaviour
                 if (kb.eKey.isPressed) rollInput += 1f;
                 if (kb.spaceKey.isPressed) thrust = 1f;
                 if (kb.leftShiftKey.isPressed) brake = 1f;
+                if (kb.fKey.wasPressedThisFrame) fire = true;
             }
             if (mouse != null)
             {
                 Vector2 md = mouse.delta.ReadValue();
-                yawInput += md.x * mouseSensitivity * 0.05f;
-                pitchInput += -md.y * mouseSensitivity * 0.05f;
+                yawInput += md.x * mouseSensitivity * 0.02f;
+                pitchInput += -md.y * mouseSensitivity * 0.02f;
                 if (mouse.leftButton.wasPressedThisFrame) fire = true;
             }
         }
+        if (invertPitch) pitchInput = -pitchInput;
 
-        // --- thrust / speed ---
-        float currentSpeed = _velocity.magnitude;
+        // --- thrust ---
         if (thrust > triggerDeadzone)
-        {
-            _velocity += transform.forward * (thrustAcceleration * thrust * Time.deltaTime);
-        }
-        if (brake > triggerDeadzone)
-        {
-            _velocity -= _velocity.normalized * (brakeDeceleration * brake * Time.deltaTime);
-            if (_velocity.magnitude < 0.5f) _velocity = Vector3.zero;
-        }
-        // passive drag
-        _velocity = Vector3.Lerp(_velocity, Vector3.zero, passiveDrag * Time.deltaTime);
-        // clamp speed
-        if (_velocity.magnitude > maxSpeed)
-            _velocity = _velocity.normalized * maxSpeed;
-        if (_velocity.magnitude < minSpeed && _velocity.magnitude > 0f && thrust <= triggerDeadzone && brake <= triggerDeadzone)
-            _velocity = Vector3.zero; // allow stop when coasting to 0
+            _rb.AddForce(transform.forward * thrust * thrustForce, ForceMode.Acceleration);
+        if (brake > triggerDeadzone && _rb.linearVelocity.sqrMagnitude > 0.01f)
+            _rb.AddForce(-_rb.linearVelocity.normalized * brake * brakeForce, ForceMode.Acceleration);
 
-        // --- thruster flames ---
+        // --- speed clamp ---
+        if (_rb.linearVelocity.magnitude > maxSpeed)
+            _rb.linearVelocity = _rb.linearVelocity.normalized * maxSpeed;
+
+        // --- steering torque ---
+        _rb.AddTorque(transform.right * pitchInput * pitchTorque, ForceMode.Acceleration);
+        _rb.AddTorque(transform.up * yawInput * yawTorque, ForceMode.Acceleration);
+        // roll into yaw + manual roll
+        float rollCmd = rollInput + (-yawInput * 0.5f);
+        _rb.AddTorque(transform.forward * rollCmd * rollTorque, ForceMode.Acceleration);
+
+        // --- banking visual (tilt model child) ---
+        _bank = Mathf.Lerp(_bank, -yawInput * maxBank * 0.6f + rollInput * maxBank, 5f * Time.fixedDeltaTime);
+        _bank = Mathf.Clamp(_bank, -maxBank, maxBank);
+        // apply bank to the model child if present
+        var model = transform.Find("Ship Model");
+        if (model != null)
+        {
+            var baseRot = Quaternion.Euler(0f, -90f, 0f);
+            model.localRotation = baseRot * Quaternion.Euler(0f, 0f, _bank);
+        }
+
+        // --- thrusters ---
         if (thrusters != null)
         {
             float t = Mathf.Clamp01(thrust);
@@ -146,26 +156,6 @@ public class ShipController : MonoBehaviour
             }
         }
 
-        transform.position += _velocity * Time.deltaTime;
-
-        // --- rotation targets ---
-        _yaw += yawInput * yawSpeed * Time.deltaTime;
-        if (invertPitch) pitchInput = -pitchInput;
-        _pitch += pitchInput * pitchSpeed * Time.deltaTime;
-        _pitch = Mathf.Clamp(_pitch, -pitchLimit, pitchLimit);
-
-        // banking: roll into yaw
-        float targetBank = -yawInput * maxBank * 0.6f + rollInput * maxBank;
-        targetBank = Mathf.Clamp(targetBank, -maxBank, maxBank);
-        _bank = Mathf.Lerp(_bank, targetBank, bankSpeed * Time.deltaTime);
-
-        float roll = rollInput * rollSpeed * Time.deltaTime;
-        _yaw += 0f; // yaw already applied
-        // apply roll to bank only (visual), not yaw
-
-        Quaternion targetRot = Quaternion.Euler(_pitch, _yaw, _bank);
-        transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, rotationSmooth * Time.deltaTime);
-
         if (fire)
             Debug.Log("[Ship] Fire pressed");
     }
@@ -176,4 +166,8 @@ public class ShipController : MonoBehaviour
         return v.normalized * ((v.magnitude - dz) / (1f - dz));
     }
 
+    void OnCollisionEnter(Collision c)
+    {
+        Debug.Log("[Ship] Collided with " + c.collider.name);
+    }
 }

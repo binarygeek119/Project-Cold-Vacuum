@@ -2410,13 +2410,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 149732202}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.7071068, y: 0, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: -0.12, y: -0.05, z: -0.95}
+  m_LocalRotation: {x: 0.90143675, y: 0.3500585, z: -0.18995419, w: 0.169671}
+  m_LocalPosition: {x: -0.179, y: 0.213, z: -0.889}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1176292530}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 153.967, y: 14.414001, z: -39.096985}
 --- !u!1 &330585543
 GameObject:
   m_ObjectHideFlags: 0
@@ -5021,13 +5021,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 874314904}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.7071068, y: 0, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 0.12, y: -0.05, z: -0.95}
+  m_LocalRotation: {x: 0.9909781, y: -0, z: -0, w: 0.1340238}
+  m_LocalPosition: {x: 0.194, y: 0.162, z: -0.801}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1176292530}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 164.596, y: 0, z: 0}
 --- !u!1 &1176292528
 GameObject:
   m_ObjectHideFlags: 0
@@ -5038,6 +5038,8 @@ GameObject:
   m_Component:
   - component: {fileID: 1176292530}
   - component: {fileID: 1176292529}
+  - component: {fileID: 1176292532}
+  - component: {fileID: 1176292531}
   m_Layer: 0
   m_Name: Player Ship
   m_TagString: Untagged
@@ -5057,19 +5059,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0275ee74571a65f8a8b4ceb145f6a7f0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ShipController
-  thrustAcceleration: 18
-  brakeDeceleration: 25
-  passiveDrag: 4
+  thrustForce: 60
+  brakeForce: 80
   maxSpeed: 60
-  minSpeed: 0
-  pitchSpeed: 90
-  yawSpeed: 90
-  rollSpeed: 120
-  rotationSmooth: 8
+  pitchTorque: 40
+  yawTorque: 40
+  rollTorque: 60
+  angularDamping: 4
   pitchLimit: 60
-  invertPitch: 1
   maxBank: 45
-  bankSpeed: 6
   stickDeadzone: 0.15
   triggerDeadzone: 0.1
   thrusters:
@@ -5078,6 +5076,7 @@ MonoBehaviour:
   thrusterMinEmission: 8
   thrusterMaxEmission: 70
   mouseSensitivity: 0.1
+  invertPitch: 1
 --- !u!4 &1176292530
 Transform:
   m_ObjectHideFlags: 0
@@ -5097,6 +5096,54 @@ Transform:
   - {fileID: 874314907}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &1176292531
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1176292528}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.6, y: 0.4, z: 2}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!54 &1176292532
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1176292528}
+  serializedVersion: 5
+  m_Mass: 1
+  m_LinearDamping: 0.5
+  m_AngularDamping: 4
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 0
+  m_IsKinematic: 0
+  m_Interpolate: 1
+  m_Constraints: 0
+  m_CollisionDetection: 2
 --- !u!1 &1542763933
 GameObject:
   m_ObjectHideFlags: 0

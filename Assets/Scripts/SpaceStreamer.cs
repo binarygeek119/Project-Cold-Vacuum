@@ -171,16 +171,20 @@ public class SpaceStreamer : MonoBehaviour
         if (asteroidPrefab != null)
         {
             go = Instantiate(asteroidPrefab);
-            foreach (var c in go.GetComponentsInChildren<Collider>()) UnityEngine.Object.Destroy(c);
+            // ensure at least one collider for physics (add sphere if missing)
+            if (go.GetComponentInChildren<Collider>() == null)
+            {
+                var sc = go.AddComponent<SphereCollider>();
+                sc.radius = 0.5f;
+            }
         }
         else
         {
             go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             var rend = go.GetComponent<Renderer>();
             if (rend != null && asteroidMaterial != null) rend.sharedMaterial = asteroidMaterial;
-            // remove collider to keep physics light
-            var col = go.GetComponent<Collider>();
-            if (col != null) UnityEngine.Object.Destroy(col);
+            // keep a sphere collider for physics
+            if (go.GetComponent<Collider>() == null) go.AddComponent<SphereCollider>();
         }
         return go;
     }
