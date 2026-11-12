@@ -21,6 +21,12 @@ public class SpaceStreamer : MonoBehaviour
     public GameObject asteroidPrefab;
     public Material asteroidMaterial;
 
+    [Header("Composite asteroids")]
+    public System.Collections.Generic.List<GameObject> asteroidModels;
+    public int minPieces = 2;
+    public int maxPieces = 4;
+    public float compositeRadius = 0.8f;
+
     private readonly Dictionary<Vector3Int, Chunk> chunks = new Dictionary<Vector3Int, Chunk>();
     private readonly Queue<Vector3Int> loadQueue = new Queue<Vector3Int>();
     private readonly Queue<Vector3Int> unloadQueue = new Queue<Vector3Int>();
@@ -130,17 +136,14 @@ public class SpaceStreamer : MonoBehaviour
                 (float)rng.NextDouble() * chunkSize);
             Vector3 pos = origin + local;
 
-            // skip if too close to chunk center? no, fine
-
-            var go = GetAsteroid();
+            var go = BuildAsteroid(rng);
             go.transform.position = pos;
             go.transform.rotation = Quaternion.Euler(
                 (float)rng.NextDouble() * 360f,
                 (float)rng.NextDouble() * 360f,
                 (float)rng.NextDouble() * 360f);
-            float s = 1f + (float)rng.NextDouble() * 2f;
-            go.transform.localScale = new Vector3(s * 0.8f, s * 1.1f, s * 0.9f);
-            go.SetActive(true);
+            float sc = 1f + (float)rng.NextDouble() * 1.5f;
+            go.transform.localScale = Vector3.one * sc;
             chunk.instances.Add(go);
         }
     }
@@ -158,6 +161,51 @@ public class SpaceStreamer : MonoBehaviour
         }
         chunk.instances.Clear();
         chunks.Remove(coord);
+    }
+
+    private GameObject BuildAsteroid(System.Random rng)
+    {
+        // If no models provided, fall back to single primitive/prefab
+        if (asteroidModels == null || asteroidModels.Count == 0)
+        {
+            return GetAsteroid();
+        }
+
+        var parent = new GameObject("Composite Asteroid");
+        int pieces = Mathf.Clamp(rng.Next(minPieces, maxPieces + 1), 1, 10);
+
+        for (int p = 0; p < pieces; p++)
+        {
+            var model = asteroidModels[rng.Next(asteroidModels.Count)];
+            if (model == null) continue;
+            var child = (GameObject)Instantiate(model);
+            child.transform.SetParent(parent.transform, false);
+            // random offset within composite radius
+            Vector3 off = new Vector3(
+                ((float)rng.NextDouble() * 2f - 1f) * compositeRadius,
+                ((float)rng.NextDouble() * 2f - 1f) * compositeRadius * 0.6f,
+                ((float)rng.NextDouble() * 2f - 1f) * compositeRadius);
+            child.transform.localPosition = off;
+            child.transform.localRotation = Quaternion.Euler(
+                (float)rng.NextDouble() * 360f,
+                (float)rng.NextDouble() * 360f,
+                (float)rng.NextDouble() * 360f);
+            float sc = 0.5f + (float)rng.NextDouble() * 1.0f;
+            child.transform.localScale = Vector3.one * sc;
+
+            // ensure collider
+            if (child.GetComponentInChildren<Collider>() == null)
+            {
+                var scol = child.AddComponent<SphereCollider>();
+                scol.radius = 0.5f;
+            }
+        }
+
+        // add a compound sphere collider on parent for physics (approx)
+        var parentCol = parent.AddComponent<SphereCollider>();
+        parentCol.radius = compositeRadius * 1.2f;
+
+        return parent;
     }
 
     private GameObject GetAsteroid()
