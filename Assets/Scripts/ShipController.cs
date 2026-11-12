@@ -27,6 +27,7 @@ public class ShipController : MonoBehaviour
     public float rollSpeed = 120f;
     public float rotationSmooth = 6f;
     public float pitchLimit = 80f;
+    public bool invertPitch = true;
 
     [Header("Banking")]
     public float maxBank = 60f;
@@ -149,6 +150,7 @@ public class ShipController : MonoBehaviour
 
         // --- rotation targets ---
         _yaw += yawInput * yawSpeed * Time.deltaTime;
+        if (invertPitch) pitchInput = -pitchInput;
         _pitch += pitchInput * pitchSpeed * Time.deltaTime;
         _pitch = Mathf.Clamp(_pitch, -pitchLimit, pitchLimit);
 
