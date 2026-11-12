@@ -5071,7 +5071,6 @@ MonoBehaviour:
   bankSpeed: 6
   stickDeadzone: 0.15
   triggerDeadzone: 0.1
-  rumbleEnabled: 1
   thrusters:
   - {fileID: 149732203}
   - {fileID: 874314905}

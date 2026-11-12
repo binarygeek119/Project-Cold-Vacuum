@@ -35,7 +35,6 @@ public class ShipController : MonoBehaviour
     [Header("Xbox / Gamepad")]
     public float stickDeadzone = 0.15f;
     public float triggerDeadzone = 0.1f;
-    public bool rumbleEnabled = true;
 
     [Header("Thrusters (flames)")]
     public ParticleSystem[] thrusters;
@@ -83,18 +82,6 @@ public class ShipController : MonoBehaviour
             pitchInput += -trim.y * 0.4f;
             fire = gp.buttonSouth.wasPressedThisFrame;
 
-            if (rumbleEnabled)
-            {
-                if (thrust > triggerDeadzone)
-                    gp.SetMotorSpeeds(0.15f, 0.35f * thrust);
-                else
-                    gp.SetMotorSpeeds(0f, 0f);
-                if (fire)
-                {
-                    gp.SetMotorSpeeds(0.6f, 0.9f);
-                    Invoke(nameof(StopRumble), 0.12f);
-                }
-            }
         }
         else
         {
@@ -187,18 +174,4 @@ public class ShipController : MonoBehaviour
         return v.normalized * ((v.magnitude - dz) / (1f - dz));
     }
 
-    private void StopRumble()
-    {
-        if (Gamepad.current != null) Gamepad.current.SetMotorSpeeds(0f, 0f);
-    }
-
-    void OnDisable()
-    {
-        if (Gamepad.current != null) Gamepad.current.ResetHaptics();
-    }
-
-    void OnDestroy()
-    {
-        if (Gamepad.current != null) Gamepad.current.ResetHaptics();
-    }
 }
