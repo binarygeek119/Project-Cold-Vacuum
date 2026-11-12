@@ -14,10 +14,10 @@ public class ShipController : MonoBehaviour
     public float maxSpeed = 50f;
 
     [Header("Steering (torque)")]
-    public float pitchTorque = 40f;
-    public float yawTorque = 40f;
-    public float rollTorque = 60f;
-    public float angularDamping = 4f;
+    public float pitchTorque = 15f;
+    public float yawTorque = 15f;
+    public float rollTorque = 30f;
+    public float angularDamping = 6f;
     public float pitchLimit = 80f;
 
     [Header("Banking")]
@@ -33,7 +33,7 @@ public class ShipController : MonoBehaviour
     public float thrusterMaxEmission = 70f;
 
     [Header("Keyboard")]
-    public float mouseSensitivity = 0.1f;
+    public float mouseSensitivity = 0.05f;
 
     [Header("Pitch")]
     public bool invertPitch = true;
