@@ -225,6 +225,9 @@ MonoBehaviour:
   pitchLimit: 60
   maxBank: 45
   bankSpeed: 6
+  stickDeadzone: 0.15
+  triggerDeadzone: 0.1
+  rumbleEnabled: 1
 --- !u!1 &330585543
 GameObject:
   m_ObjectHideFlags: 0

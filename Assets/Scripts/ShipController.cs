@@ -26,6 +26,11 @@ public class ShipController : MonoBehaviour
     public float maxBank = 45f;
     public float bankSpeed = 6f;
 
+    [Header("Xbox / Gamepad")]
+    public float stickDeadzone = 0.15f;
+    public float triggerDeadzone = 0.1f;
+    public bool rumbleEnabled = true;
+
     private Vector3 _velocity;
     private float _yaw;
     private float _pitch;
@@ -43,8 +48,8 @@ public class ShipController : MonoBehaviour
         var gp = Gamepad.current;
         if (gp == null) return;
 
-        Vector2 move = gp.leftStick.ReadValue();
-        Vector2 look = gp.rightStick.ReadValue();
+        Vector2 move = ApplyDeadzone(gp.leftStick.ReadValue(), stickDeadzone);
+        Vector2 look = ApplyDeadzone(gp.rightStick.ReadValue(), stickDeadzone);
 
         // --- desired velocity (local -> world) ---
         Vector3 localDesired = new Vector3(move.x, 0f, move.y);
@@ -60,6 +65,24 @@ public class ShipController : MonoBehaviour
         _velocity = Vector3.Lerp(_velocity, worldDesired, acceleration * Time.deltaTime);
         if (localDesired.sqrMagnitude < 0.01f)
             _velocity = Vector3.Lerp(_velocity, Vector3.zero, drag * Time.deltaTime);
+
+        // --- rumble ---
+        if (rumbleEnabled && gp != null)
+        {
+            float boost = gp.rightTrigger.ReadValue();
+            if (boost > triggerDeadzone)
+                gp.SetMotorSpeeds(0.25f, 0.5f * boost);
+            else
+                gp.SetMotorSpeeds(0f, 0f);
+
+            // fire pulse handled below on press
+            if (gp.buttonSouth.wasPressedThisFrame)
+            {
+                gp.SetMotorSpeeds(0.6f, 0.9f);
+                // reset next frame naturally via trigger state; schedule a short pulse
+                Invoke(nameof(StopRumble), 0.12f);
+            }
+        }
 
         transform.position += _velocity * Time.deltaTime;
 
@@ -82,5 +105,23 @@ public class ShipController : MonoBehaviour
 
         if (gp.buttonSouth.wasPressedThisFrame)
             Debug.Log("[Ship] Fire (A) pressed");
+    }
+
+    private static Vector2 ApplyDeadzone(Vector2 v, float dz)
+    {
+        if (v.magnitude < dz) return Vector2.zero;
+        return v.normalized * ((v.magnitude - dz) / (1f - dz));
+    }
+
+    private void StopRumble() { if (Gamepad.current != null) Gamepad.current.SetMotorSpeeds(0f, 0f); }
+
+    void OnDisable()
+    {
+        if (Gamepad.current != null) Gamepad.current.ResetHaptics();
+    }
+
+    void OnDestroy()
+    {
+        if (Gamepad.current != null) Gamepad.current.ResetHaptics();
     }
 }
