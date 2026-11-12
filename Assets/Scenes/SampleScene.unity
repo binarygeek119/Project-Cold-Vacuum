@@ -5067,6 +5067,7 @@ MonoBehaviour:
   rollSpeed: 120
   rotationSmooth: 8
   pitchLimit: 60
+  invertPitch: 1
   maxBank: 45
   bankSpeed: 6
   stickDeadzone: 0.15
