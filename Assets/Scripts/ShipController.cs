@@ -9,9 +9,9 @@ using UnityEngine.InputSystem;
 public class ShipController : MonoBehaviour
 {
     [Header("Thrust")]
-    public float thrustForce = 60f;          // acceleration while thrusting
-    public float brakeForce = 80f;          // deceleration while braking
-    public float maxSpeed = 150f;
+    public float thrustForce = 25f;          // acceleration while thrusting
+    public float brakeForce = 40f;          // deceleration while braking
+    public float maxSpeed = 50f;
 
     [Header("Steering (torque)")]
     public float pitchTorque = 40f;

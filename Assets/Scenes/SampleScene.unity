@@ -5059,9 +5059,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0275ee74571a65f8a8b4ceb145f6a7f0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ShipController
-  thrustForce: 60
-  brakeForce: 80
-  maxSpeed: 60
+  thrustForce: 25
+  brakeForce: 40
+  maxSpeed: 50
   pitchTorque: 40
   yawTorque: 40
   rollTorque: 60
