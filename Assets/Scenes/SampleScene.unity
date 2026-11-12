@@ -217,9 +217,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ShipController
   moveSpeed: 10
-  turnSpeed: 150
+  acceleration: 6
+  drag: 3
   boostMultiplier: 2.5
-  verticalSpeed: 6
+  turnSpeed: 150
+  rotationSmooth: 8
+  pitchLimit: 60
+  maxBank: 45
+  bankSpeed: 6
 --- !u!1 &330585543
 GameObject:
   m_ObjectHideFlags: 0
