@@ -222,15 +222,14 @@ public class SpaceStreamer : MonoBehaviour
             var brend = billboard.GetComponent<Renderer>();
             if (brend != null)
             {
-                var sh = Shader.Find("Universal Render Pipeline/Particles/Unlit");
+                var sh = Shader.Find("Custom/CloudParticle");
                 if (sh == null) sh = Shader.Find("Universal Render Pipeline/Unlit");
                 if (sh == null) sh = Shader.Find("Unlit/Color");
                 var mat = new Material(sh);
-                mat.color = new Color(1f, 0.95f, 0.8f, 0.6f);
-                if (mat.HasProperty("_SurfaceType")) mat.SetFloat("_SurfaceType", 1f);
-                if (mat.HasProperty("_BlendMode")) mat.SetFloat("_BlendMode", 2f);
-                if (mat.HasProperty("_ZWrite")) mat.SetFloat("_ZWrite", 0f);
-                if (mat.HasProperty("_Cull")) mat.SetFloat("_Cull", 0f);
+                var starTex = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/ParticleSoftCircle.png");
+                if (starTex != null && mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", starTex);
+                if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", new Color(1f, 0.95f, 0.8f, 0.9f));
+                mat.color = new Color(1f, 0.95f, 0.8f, 0.9f);
                 brend.material = mat;
                 brend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             }
