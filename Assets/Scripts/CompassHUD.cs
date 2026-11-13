@@ -1,24 +1,24 @@
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections.Generic;
 
 /// <summary>
 /// Skyrim-style compass that points toward the nearest point of interest.
 /// </summary>
 public class CompassHUD : MonoBehaviour
 {
-    public RectTransform compassBar;   // the horizontal compass strip
-    public RectTransform marker;       // the marker that moves on the bar
-    public Text markerLabel;           // optional label
-    public float maxAngle = 90f;       // half-width of compass in degrees
-    public float barWidth = 400f;      // width of compass bar in pixels
+    public RectTransform compassBar;
+    public RectTransform marker;
+    public Text markerLabel;
+    public float maxAngle = 90f;
+    public float barWidth = 400f;
 
-    private Transform _target; // the object to point to
+    private Transform _target;
 
     void Update()
     {
         if (compassBar == null || marker == null) return;
 
-        // find nearest point of interest
         FindNearestTarget();
 
         if (_target == null)
@@ -31,24 +31,20 @@ public class CompassHUD : MonoBehaviour
         marker.gameObject.SetActive(true);
         if (markerLabel != null) markerLabel.gameObject.SetActive(true);
 
-        // direction from ship to target
         var ship = GameObject.Find("Player Ship");
         if (ship == null) return;
         Vector3 toTarget = _target.position - ship.transform.position;
-        toTarget.y = 0f; // horizontal only
+        toTarget.y = 0f;
         if (toTarget.sqrMagnitude < 0.01f) return;
         Vector3 dir = toTarget.normalized;
 
-        // ship forward (horizontal)
         Vector3 forward = ship.transform.forward;
         forward.y = 0f;
         if (forward.sqrMagnitude < 0.01f) forward = Vector3.forward;
         forward.Normalize();
 
-        // angle between forward and direction to target
         float angle = Vector3.SignedAngle(forward, dir, Vector3.up);
 
-        // clamp to compass range
         if (Mathf.Abs(angle) > maxAngle)
         {
             marker.gameObject.SetActive(false);
@@ -56,11 +52,9 @@ public class CompassHUD : MonoBehaviour
             return;
         }
 
-        // map angle to bar position (-barWidth/2 .. +barWidth/2)
         float x = (angle / maxAngle) * (barWidth / 2f);
         marker.anchoredPosition = new Vector2(x, marker.anchoredPosition.y);
 
-        // label
         if (markerLabel != null)
         {
             float dist = toTarget.magnitude;
@@ -73,20 +67,28 @@ public class CompassHUD : MonoBehaviour
         _target = null;
         float minDist = float.MaxValue;
 
-        // candidate targets: stars, planets, stations, asteroids clusters
-        var candidates = new System.Collections.Generic.List<Transform>();
-        // stars in scene
-        foreach (var go in GameObject.FindGameObjectsWithTag("Untagged"))
+        var ship = GameObject.Find("Player Ship");
+        if (ship == null) return;
+
+        // Candidate targets: GasGiant, StarLOD, Station, EnemyShip, or anything with "Star"/"Planet" in name
+        var candidates = new List<Transform>();
+        var allTransforms = UnityEngine.Object.FindObjectsByType<Transform>(UnityEngine.FindObjectsSortMode.None);
+        foreach (var tr in allTransforms)
         {
-            if (go.name.Contains("Star") || go.name.Contains("Planet") || go.name.Contains("Station") || go.name.Contains("Sphere"))
-                candidates.Add(go.transform);
+            var go = tr.gameObject;
+            if (go == ship) continue;
+            bool isTarget = false;
+            if (go.GetComponent<GasGiant>() != null) isTarget = true;
+            if (go.GetComponent<StarLOD>() != null) isTarget = true;
+            if (go.GetComponent<EnemyShip>() != null) isTarget = true;
+            if (go.name.Contains("Star") || go.name.Contains("Planet") || go.name.Contains("Station")) isTarget = true;
+            if (isTarget) candidates.Add(tr);
         }
 
+        Debug.Log("[CompassHUD] candidates=" + candidates.Count);
         foreach (var t in candidates)
         {
-            if (t == null || t == transform) continue;
-            var ship = GameObject.Find("Player Ship");
-            if (ship == null) continue;
+            if (t == null) continue;
             float d = Vector3.Distance(ship.transform.position, t.position);
             if (d < minDist) { minDist = d; _target = t; }
         }
