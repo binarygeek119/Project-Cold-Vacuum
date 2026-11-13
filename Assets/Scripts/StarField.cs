@@ -105,6 +105,12 @@ public class StarField : MonoBehaviour
             // try asset path
             if (tex == null) tex = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/ParticleSoftCircle.png");
             if (tex != null && mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", tex);
+            // Enable emission for bloom
+            if (mat.HasProperty("_EmissionColor")) 
+            { 
+                mat.EnableKeyword("_EMISSION"); 
+                mat.SetColor("_EmissionColor", starColor * 3f); // HDR value for bloom
+            }
             brend.material = mat;
             brend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         }
