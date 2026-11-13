@@ -3,8 +3,8 @@ using UnityEngine.UI;
 
 /// <summary>
 /// 3D compass (Skyrim-style) with horizontal bar (top) and vertical bar (left).
-/// Bars scroll (animate) with ship movement; pins are static images that
-/// move position to point at the nearest target in the current star system.
+/// Bars stay fixed in place; pins rotate like gauge needles to point at the
+/// nearest target in the current star system. Bars and pins are separate images.
 /// </summary>
 public class CompassHUD3D : MonoBehaviour
 {
@@ -17,12 +17,9 @@ public class CompassHUD3D : MonoBehaviour
     public float maxAngle = 90f;
     public float barWidth = 400f;
     public float barHeight = 400f;
-    public float scrollSpeed = 0.5f;
 
     private Transform _target;
     private SpaceStreamer _streamer;
-    private float _hScroll;
-    private float _vScroll;
 
     void Start()
     {
@@ -37,19 +34,6 @@ public class CompassHUD3D : MonoBehaviour
 
         var ship = GameObject.Find("Player Ship");
         if (ship == null) return;
-
-        // Scroll bars based on ship rotation (yaw/pitch)
-        float yaw = ship.transform.eulerAngles.y;
-        float pitch = ship.transform.eulerAngles.x;
-        if (pitch > 180f) pitch -= 360f;
-
-        _hScroll = Mathf.Lerp(_hScroll, yaw * 0.01f * scrollSpeed, Time.deltaTime * 5f);
-        _vScroll = Mathf.Lerp(_vScroll, pitch * 0.01f * scrollSpeed, Time.deltaTime * 5f);
-
-        if (horizontalBar != null)
-            horizontalBar.uvRect = new Rect(_hScroll, 0f, 1f, 1f);
-        if (verticalBar != null)
-            verticalBar.uvRect = new Rect(0f, _vScroll, 1f, 1f);
 
         if (_target == null)
         {
@@ -79,7 +63,7 @@ public class CompassHUD3D : MonoBehaviour
         // Vertical angle (pitch bearing)
         float vAngle = Mathf.Asin(Mathf.Clamp(dir.y, -1f, 1f)) * Mathf.Rad2Deg;
 
-        // Update horizontal pin position
+        // Rotate horizontal pin like a gauge needle (stays in place, rotates)
         if (horizontalPin != null)
         {
             if (Mathf.Abs(hAngle) > maxAngle)
@@ -87,12 +71,13 @@ public class CompassHUD3D : MonoBehaviour
             else
             {
                 horizontalPin.gameObject.SetActive(true);
-                float hx = (hAngle / maxAngle) * (barWidth / 2f);
-                horizontalPin.anchoredPosition = new Vector2(hx, horizontalPin.anchoredPosition.y);
+                // Pin stays at center; rotates to point at target
+                horizontalPin.anchoredPosition = Vector2.zero;
+                horizontalPin.localRotation = Quaternion.Euler(0f, 0f, -hAngle);
             }
         }
 
-        // Update vertical pin position
+        // Rotate vertical pin like a gauge needle
         if (verticalPin != null)
         {
             if (Mathf.Abs(vAngle) > maxAngle)
@@ -100,8 +85,8 @@ public class CompassHUD3D : MonoBehaviour
             else
             {
                 verticalPin.gameObject.SetActive(true);
-                float vy = (vAngle / maxAngle) * (barHeight / 2f);
-                verticalPin.anchoredPosition = new Vector2(verticalPin.anchoredPosition.x, -vy);
+                verticalPin.anchoredPosition = Vector2.zero;
+                verticalPin.localRotation = Quaternion.Euler(0f, 0f, vAngle);
             }
         }
 
@@ -136,34 +121,34 @@ public class CompassHUD3D : MonoBehaviour
         var ship = GameObject.Find("Player Ship");
         if (ship == null) return;
 
-        // Get current star system info
-        Vector3 systemCenter = Vector3.zero;
-        float systemRadius = 0f;
-        bool inSystem = false;
-        if (_streamer != null)
+        // Check if in star system
+        if (_streamer != null && !_streamer.IsInStarSystem())
         {
-            systemCenter = _streamer.GetCurrentSystemCenter();
-            systemRadius = _streamer.GetCurrentSystemRadius();
-            inSystem = _streamer.IsInStarSystem();
-        }
-
-        // Hide pins if not in a star system
-        if (!inSystem)
-        {
-            _target = null;
             return;
         }
 
-        // Find all CompassTarget components
-        var allTargets = FindObjectsByType<CompassTarget>(FindObjectsSortMode.None);
-        foreach (var ct in allTargets)
+        Vector3 systemCenter = _streamer != null ? _streamer.GetCurrentSystemCenter() : Vector3.zero;
+        float systemRadius = _streamer != null ? _streamer.GetCurrentSystemRadius() : 0f;
+
+        var allTransforms = FindObjectsByType<Transform>(FindObjectsSortMode.None);
+        foreach (var tr in allTransforms)
         {
-            if (ct == null) continue;
-            // Filter by current system radius
-            float distToSystem = Vector3.Distance(ct.transform.position, systemCenter);
-            if (distToSystem > systemRadius) continue;
-            float d = Vector3.Distance(ship.transform.position, ct.transform.position);
-            if (d < minDist) { minDist = d; _target = ct.transform; }
+            var go = tr.gameObject;
+            if (go == ship) continue;
+            bool isTarget = false;
+            if (go.GetComponent<CompassTarget>() != null) isTarget = true;
+            if (go.name.Contains("Star") || go.name.Contains("Planet") || go.name.Contains("Station")) isTarget = true;
+            if (!isTarget) continue;
+
+            // Filter by current system
+            if (systemRadius > 0f)
+            {
+                float distToSystem = Vector3.Distance(go.transform.position, systemCenter);
+                if (distToSystem > systemRadius) continue;
+            }
+
+            float d = Vector3.Distance(ship.transform.position, go.transform.position);
+            if (d < minDist) { minDist = d; _target = go.transform; }
         }
     }
 }
