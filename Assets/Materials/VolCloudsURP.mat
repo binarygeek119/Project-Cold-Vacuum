@@ -25,14 +25,14 @@ Material:
     m_TexEnvs: []
     m_Ints: []
     m_Floats:
-    - _CloudAlpha: 0.564
-    - _CloudBrightness: 1.33
+    - _CloudAlpha: 0.85
+    - _CloudBrightness: 1.6
     - _CloudDistance: 0.051
     - _CloudHardness: 1
     - _CloudHeightScatter: 2.07
     - _CloudScale: 0.304
     - _CloudScattering: 1.49
-    - _CloudSubtract: 0.536
+    - _CloudSubtract: 0.4
     - _CloudTime: 0
     - _MaxDetail: 0.286
     - _SunGlare: 0.96
