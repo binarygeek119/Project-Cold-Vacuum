@@ -343,9 +343,9 @@ public class SpaceStreamer : MonoBehaviour
                 if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", tex);
                 if (mat.HasProperty("_MainTex")) mat.SetTexture("_MainTex", tex);
             }
-            if (mat.HasProperty("_Surface")) mat.SetFloat("_Surface", 1f);
-            if (mat.HasProperty("_Blend")) mat.SetFloat("_Blend", 2f);
-            if (mat.HasProperty("_Cull")) mat.SetFloat("_Cull", 0f);
+            if (mat.HasProperty("_SurfaceType")) mat.SetFloat("_SurfaceType", 1f);   // transparent
+            if (mat.HasProperty("_BlendMode")) mat.SetFloat("_BlendMode", 2f);       // additive
+            if (mat.HasProperty("_Cull")) mat.SetFloat("_Cull", 0f);                 // off
             if (mat.HasProperty("_ZWrite")) mat.SetFloat("_ZWrite", 0f);
             mat.color = Color.white;
             rend.material = mat;
