@@ -29,7 +29,7 @@ public class SpaceStreamer : MonoBehaviour
 
     [Header("Nebula clouds")]
     public float nebulaChance = 0.35f;          // probability per chunk
-    public float planetChance = 0.06f;           // probability per chunk (gas giants)
+    public float planetChance = 0.03f;           // probability per chunk (gas giants)
     public float nebulaMinScale = 18f;
     public float nebulaMaxScale = 40f;
     public Material nebulaMaterial;
@@ -178,7 +178,7 @@ public class SpaceStreamer : MonoBehaviour
                 (float)rng.NextDouble() * chunkSize,
                 (float)rng.NextDouble() * chunkSize);
             planet.transform.position = origin + plocal;
-            float pscale = 6f + (float)rng.NextDouble() * 10f;
+            float pscale = 50f + (float)rng.NextDouble() * 70f;
             planet.transform.localScale = Vector3.one * pscale;
             chunk.instances.Add(planet);
         }

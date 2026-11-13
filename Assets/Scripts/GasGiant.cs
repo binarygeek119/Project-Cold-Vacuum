@@ -22,14 +22,14 @@ public class GasGiant : MonoBehaviour
         _rb.useGravity = false;
         _rb.linearDamping = 0.2f;
         _rb.angularDamping = 0.1f;
-        _rb.mass = 1000f;
+        _rb.mass = 10000f;
         _rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
 
         _orbitCenter = transform.position;
         _spinAxis = Random.onUnitSphere;
-        spinSpeed = Random.Range(2f, 8f);
-        orbitSpeed = Random.Range(0.02f, 0.08f);
-        orbitRadius = Random.Range(10f, 30f);
+        spinSpeed = Random.Range(0.5f, 2f);
+        orbitSpeed = Random.Range(0.005f, 0.02f);
+        orbitRadius = Random.Range(80f, 200f);
 
         _rb.angularVelocity = _spinAxis * (spinSpeed * Mathf.Deg2Rad);
         // initial tangential velocity
@@ -51,7 +51,7 @@ public class GasGiant : MonoBehaviour
         if (dist > 0.01f)
         {
             float centripetal = _rb.mass * (orbitSpeed * orbitSpeed * dist);
-            centripetal = Mathf.Min(centripetal, 50f);
+            centripetal = Mathf.Min(centripetal, 200f);
             _rb.AddForce(toCenter.normalized * centripetal, ForceMode.Force);
         }
     }
