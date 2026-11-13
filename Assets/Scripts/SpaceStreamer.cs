@@ -238,12 +238,11 @@ public class SpaceStreamer : MonoBehaviour
 
     private GameObject BuildNebula(System.Random rng)
     {
-        // 3D volume: 3 crossed quads (tri-planar) so it reads as a volume from any angle
+        // Stratus-style: flat, wide, horizontal layered sheets
         var parent = new GameObject("Nebula Cloud");
         parent.AddComponent<NebulaCloud>();
 
         var tex = (nebulaMaterial != null && nebulaMaterial.HasProperty("_BaseMap")) ? nebulaMaterial.GetTexture("_BaseMap") : null;
-        if (tex == null) tex = Resources.Load<Texture2D>("ParticleSoftCircle");
 
         Color[] palette = new Color[] {
             new Color(1f, 0.3f, 0.6f),
@@ -256,15 +255,19 @@ public class SpaceStreamer : MonoBehaviour
         Color c = palette[rng.Next(palette.Length)];
         c = Color.Lerp(c, Color.white, 0.35f);
 
-        for (int i = 0; i < 3; i++)
+        int layers = 2 + rng.Next(0, 2); // 2-3 layers
+        for (int i = 0; i < layers; i++)
         {
             var q = GameObject.CreatePrimitive(PrimitiveType.Quad);
-            // remove collider
             var col = q.GetComponent<Collider>();
             if (col != null) UnityEngine.Object.Destroy(col);
             q.transform.SetParent(parent.transform, false);
-            q.transform.localRotation = Quaternion.Euler(0f, i * 60f, 0f);
-            q.transform.localScale = Vector3.one;
+            // flat horizontal sheet
+            q.transform.localRotation = Quaternion.Euler(90f, rng.Next(0, 360), 0f);
+            q.transform.localPosition = new Vector3(0f, (i - (layers - 1) / 2f) * 1.5f, 0f);
+            float w = 1f + (float)rng.NextDouble() * 0.6f;
+            float h = 1f + (float)rng.NextDouble() * 0.6f;
+            q.transform.localScale = new Vector3(w, h, 1f) * (nebulaMinScale * 1.5f);
 
             var rend = q.GetComponent<MeshRenderer>();
             if (rend != null)
@@ -287,8 +290,11 @@ public class SpaceStreamer : MonoBehaviour
                 if (inst.HasProperty("_Blend")) inst.SetFloat("_Blend", 2f);
                 if (inst.HasProperty("_Cull")) inst.SetFloat("_Cull", 0f);
                 if (inst.HasProperty("_ZWrite")) inst.SetFloat("_ZWrite", 0f);
-                inst.color = c;
-                if (inst.HasProperty("_BaseColor")) inst.SetColor("_BaseColor", c);
+                // slight color variation per layer
+                Color layerColor = Color.Lerp(c, palette[rng.Next(palette.Length)], 0.3f);
+                layerColor.a = 0.7f;
+                inst.color = layerColor;
+                if (inst.HasProperty("_BaseColor")) inst.SetColor("_BaseColor", layerColor);
                 rend.material = inst;
             }
         }
