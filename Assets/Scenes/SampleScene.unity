@@ -3877,6 +3877,7 @@ MonoBehaviour:
   thrustForce: 25
   brakeForce: 40
   maxSpeed: 50
+  hyperDriveMultiplier: 10
   pitchTorque: 15
   yawTorque: 15
   rollTorque: 30

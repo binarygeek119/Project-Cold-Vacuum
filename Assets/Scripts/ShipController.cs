@@ -11,6 +11,9 @@ public class ShipController : MonoBehaviour
     public float thrustForce = 25f;
     public float brakeForce = 40f;
     public float maxSpeed = 50f;
+    public float hyperDriveMultiplier = 10f;
+    private bool _hyperDriveActive = false;
+    public bool HyperDriveActive => _hyperDriveActive;
 
     [Header("Steering (torque)")]
     public float pitchTorque = 15f;
@@ -110,10 +113,21 @@ public class ShipController : MonoBehaviour
             rollInput = 0f;
         }
 
+        // --- hyper drive toggle (X button / H key) ---
+        bool hyperToggle = false;
+        if (gp != null) hyperToggle = gp.buttonWest.wasPressedThisFrame;
+        else
+        {
+            var kb2 = Keyboard.current;
+            if (kb2 != null && kb2.hKey.wasPressedThisFrame) hyperToggle = true;
+        }
+        if (hyperToggle) _hyperDriveActive = !_hyperDriveActive;
+
         // --- thrust ---
+        float speedMult = _hyperDriveActive ? hyperDriveMultiplier : 1f;
         if (thrust > triggerDeadzone)
         {
-            _rb.AddForce(transform.forward * thrust * thrustForce, ForceMode.Acceleration);
+            _rb.AddForce(transform.forward * thrust * thrustForce * speedMult, ForceMode.Acceleration);
         }
         else if (brake > triggerDeadzone)
         {
@@ -125,7 +139,7 @@ public class ShipController : MonoBehaviour
             else
             {
                 // fully slowed: apply reverse thrust (slower than forward)
-                _rb.AddForce(-transform.forward * brake * thrustForce * 0.4f, ForceMode.Acceleration);
+                _rb.AddForce(-transform.forward * brake * thrustForce * 0.4f * speedMult, ForceMode.Acceleration);
             }
         }
         else
@@ -134,8 +148,9 @@ public class ShipController : MonoBehaviour
         }
 
         // --- speed clamp ---
-        if (_rb.linearVelocity.magnitude > maxSpeed)
-            _rb.linearVelocity = _rb.linearVelocity.normalized * maxSpeed;
+        float currentMaxSpeed = maxSpeed * speedMult;
+        if (_rb.linearVelocity.magnitude > currentMaxSpeed)
+            _rb.linearVelocity = _rb.linearVelocity.normalized * currentMaxSpeed;
 
         // --- steering torque ---
         _rb.AddTorque(transform.right * pitchInput * pitchTorque, ForceMode.Acceleration);
