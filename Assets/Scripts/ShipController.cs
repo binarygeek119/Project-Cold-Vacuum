@@ -20,8 +20,8 @@ public class ShipController : MonoBehaviour
     public float pitchLimit = 80f;
 
     [Header("Banking")]
-    public float maxBank = 60f;
-    public float bankSpeed = 5f;
+    public float maxBank = 80f;
+    public float bankSpeed = 10f;
 
     [Header("Xbox / Gamepad")]
     public float stickDeadzone = 0.15f;
@@ -135,7 +135,7 @@ public class ShipController : MonoBehaviour
         _rb.AddTorque(transform.forward * rollCmd * rollTorque, ForceMode.Acceleration);
 
         // --- banking visual (tilt model child) ---
-        _bank = Mathf.Lerp(_bank, -yawInput * maxBank * 0.6f + rollInput * maxBank, 5f * Time.fixedDeltaTime);
+        _bank = Mathf.Lerp(_bank, yawInput * maxBank * 0.6f + rollInput * maxBank, 5f * Time.fixedDeltaTime);
         _bank = Mathf.Clamp(_bank, -maxBank, maxBank);
         var model = transform.Find("Ship Model");
         if (model != null)
