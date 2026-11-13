@@ -1,25 +1,15 @@
 using UnityEngine;
 
 /// <summary>
-/// A soft, glowing nebula cloud that billboards toward the camera and slowly rotates.
+/// Slowly rotates a volumetric nebula cloud (3 crossed quads) so it reads as a 3D volume.
 /// </summary>
 public class NebulaCloud : MonoBehaviour
 {
-    public float rotateSpeed = 8f;
-    private Transform _cam;
-
-    void Start()
-    {
-        _cam = Camera.main != null ? Camera.main.transform : null;
-    }
+    public float rotateSpeed = 6f;
+    public Vector3 rotateAxis = new Vector3(0.3f, 1f, 0.2f);
 
     void Update()
     {
-        if (_cam != null)
-        {
-            transform.LookAt(_cam.position);
-            // billboard: keep upright-ish by rotating 180 on Y after lookat
-        }
-        transform.Rotate(0f, 0f, rotateSpeed * Time.deltaTime, Space.Self);
+        transform.Rotate(rotateAxis.normalized, rotateSpeed * Time.deltaTime, Space.Self);
     }
 }

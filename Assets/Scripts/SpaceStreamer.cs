@@ -238,45 +238,62 @@ public class SpaceStreamer : MonoBehaviour
 
     private GameObject BuildNebula(System.Random rng)
     {
-        var go = GameObject.CreatePrimitive(PrimitiveType.Quad);
-        // remove collider
-        var col = go.GetComponent<Collider>();
-        if (col != null) UnityEngine.Object.Destroy(col);
+        // 3D volume: 3 crossed quads (tri-planar) so it reads as a volume from any angle
+        var parent = new GameObject("Nebula Cloud");
+        parent.AddComponent<NebulaCloud>();
 
-        var rend = go.GetComponent<MeshRenderer>();
-        if (rend != null)
+        var tex = (nebulaMaterial != null && nebulaMaterial.HasProperty("_BaseMap")) ? nebulaMaterial.GetTexture("_BaseMap") : null;
+        if (tex == null) tex = Resources.Load<Texture2D>("ParticleSoftCircle");
+
+        Color[] palette = new Color[] {
+            new Color(1f, 0.3f, 0.6f),
+            new Color(0.4f, 0.6f, 1f),
+            new Color(0.6f, 0.3f, 1f),
+            new Color(0.3f, 1f, 0.8f),
+            new Color(1f, 0.6f, 0.2f),
+            new Color(0.8f, 0.2f, 1f),
+        };
+        Color c = palette[rng.Next(palette.Length)];
+        c = Color.Lerp(c, Color.white, 0.35f);
+
+        for (int i = 0; i < 3; i++)
         {
-            Material mat = nebulaMaterial;
-            if (mat == null)
+            var q = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            // remove collider
+            var col = q.GetComponent<Collider>();
+            if (col != null) UnityEngine.Object.Destroy(col);
+            q.transform.SetParent(parent.transform, false);
+            q.transform.localRotation = Quaternion.Euler(0f, i * 60f, 0f);
+            q.transform.localScale = Vector3.one;
+
+            var rend = q.GetComponent<MeshRenderer>();
+            if (rend != null)
             {
-                var sh = Shader.Find("Universal Render Pipeline/Particles/Unlit");
-                if (sh == null) sh = Shader.Find("Universal Render Pipeline/Unlit");
-                if (sh == null) sh = Shader.Find("Unlit/Color");
-                mat = new Material(sh);
-                if (mat.HasProperty("_Surface")) mat.SetFloat("_Surface", 1f);
-                if (mat.HasProperty("_Blend")) mat.SetFloat("_Blend", 2f);
-                if (mat.HasProperty("_Cull")) mat.SetFloat("_Cull", 0f);
-                if (mat.HasProperty("_ZWrite")) mat.SetFloat("_ZWrite", 0f);
+                Material baseMat = nebulaMaterial;
+                if (baseMat == null)
+                {
+                    var sh = Shader.Find("Universal Render Pipeline/Particles/Unlit");
+                    if (sh == null) sh = Shader.Find("Universal Render Pipeline/Unlit");
+                    if (sh == null) sh = Shader.Find("Unlit/Color");
+                    baseMat = new Material(sh);
+                }
+                var inst = new Material(baseMat);
+                if (tex != null)
+                {
+                    if (inst.HasProperty("_BaseMap")) inst.SetTexture("_BaseMap", tex);
+                    if (inst.HasProperty("_MainTex")) inst.SetTexture("_MainTex", tex);
+                }
+                if (inst.HasProperty("_Surface")) inst.SetFloat("_Surface", 1f);
+                if (inst.HasProperty("_Blend")) inst.SetFloat("_Blend", 2f);
+                if (inst.HasProperty("_Cull")) inst.SetFloat("_Cull", 0f);
+                if (inst.HasProperty("_ZWrite")) inst.SetFloat("_ZWrite", 0f);
+                inst.color = c;
+                if (inst.HasProperty("_BaseColor")) inst.SetColor("_BaseColor", c);
+                rend.material = inst;
             }
-            // instance material with random bright color
-            var inst = new Material(mat);
-            Color[] palette = new Color[] {
-                new Color(1f, 0.3f, 0.6f),   // pink
-                new Color(0.4f, 0.6f, 1f),    // blue
-                new Color(0.6f, 0.3f, 1f),    // purple
-                new Color(0.3f, 1f, 0.8f),    // cyan
-                new Color(1f, 0.6f, 0.2f),    // orange
-                new Color(0.8f, 0.2f, 1f),    // violet
-            };
-            Color c = palette[rng.Next(palette.Length)];
-            c = Color.Lerp(c, Color.white, 0.3f); // lighten for glow
-            inst.color = c;
-            if (inst.HasProperty("_BaseColor")) inst.SetColor("_BaseColor", c);
-            rend.material = inst;
         }
 
-        go.AddComponent<NebulaCloud>();
-        return go;
+        return parent;
     }
 
     private GameObject GetAsteroid()
