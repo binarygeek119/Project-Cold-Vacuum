@@ -107,6 +107,13 @@ public class ShipController : MonoBehaviour
                 if (mouse.leftButton.wasPressedThisFrame) fire = true;
             }
         }
+        // Steering only works while thrusting
+        if (thrust <= triggerDeadzone)
+        {
+            pitchInput = 0f;
+            yawInput = 0f;
+            rollInput = 0f;
+        }
         if (invertPitch) pitchInput = -pitchInput;
 
         // --- thrust ---
