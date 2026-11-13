@@ -269,73 +269,16 @@ public class SpaceStreamer : MonoBehaviour
 
     private GameObject BuildNebula(System.Random rng)
     {
-        // Volumetric cloud using a particle system for a real 3D cloud look
-        var parent = new GameObject("Nebula Cloud");
+        // Single large soft billboard cloud (not particles) for a clear cloud shape
+        var go = GameObject.CreatePrimitive(PrimitiveType.Quad);
+        var col = go.GetComponent<Collider>();
+        if (col != null) UnityEngine.Object.Destroy(col);
 
-        var ps = parent.AddComponent<ParticleSystem>();
-        var main = ps.main;
-        main.startLifetime = 20f;
-        main.startSpeed = 0.5f;
-        main.startSize = new ParticleSystem.MinMaxCurve(2f, 5f);
-        Color[] palette = new Color[] {
-            new Color(1f, 0.95f, 0.9f),
-            new Color(0.9f, 0.95f, 1f),
-            new Color(1f, 0.9f, 0.95f),
-            new Color(0.95f, 1f, 0.95f),
-        };
-        Color c = palette[rng.Next(palette.Length)];
-        main.startColor = c;
-        main.maxParticles = 120;
-        main.simulationSpace = ParticleSystemSimulationSpace.Local;
-        main.playOnAwake = true;
-        main.loop = true;
-
-        // emission
-        var em = ps.emission;
-        em.rateOverTime = 20f;
-
-        // shape: large sphere volume
-        var shape = ps.shape;
-        shape.shapeType = ParticleSystemShapeType.Sphere;
-        shape.radius = 0.8f;
-
-        // noise for organic movement
-        var noise = ps.noise;
-        noise.enabled = true;
-        noise.strength = 0.4f;
-        noise.frequency = 0.3f;
-        noise.scrollSpeed = 0.2f;
-        noise.damping = true;
-
-        // color over lifetime: fade in/out
-        var col = ps.colorOverLifetime;
-        col.enabled = true;
-        var grad = new Gradient();
-        grad.SetKeys(
-            new GradientColorKey[] {
-                new GradientColorKey(c, 0f),
-                new GradientColorKey(c, 1f)
-            },
-            new GradientAlphaKey[] {
-                new GradientAlphaKey(0f, 0f),
-                new GradientAlphaKey(0.6f, 0.2f),
-                new GradientAlphaKey(0.6f, 0.8f),
-                new GradientAlphaKey(0f, 1f)
-            });
-        col.color = grad;
-
-        // size over lifetime
-        var sol = ps.sizeOverLifetime;
-        sol.enabled = true;
-        sol.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.EaseInOut(0f, 0.6f, 1f, 1.2f));
-
-        // renderer material
-        var rend = parent.GetComponent<ParticleSystemRenderer>();
+        var rend = go.GetComponent<MeshRenderer>();
         if (rend != null)
         {
             var tex = (nebulaMaterial != null && nebulaMaterial.HasProperty("_BaseMap")) ? nebulaMaterial.GetTexture("_BaseMap") : null;
             var sh = Shader.Find("Custom/CloudParticle");
-            if (sh == null) sh = Shader.Find("Universal Render Pipeline/Particles/Unlit");
             if (sh == null) sh = Shader.Find("Universal Render Pipeline/Unlit");
             var mat = new Material(sh);
             if (tex != null)
@@ -343,42 +286,11 @@ public class SpaceStreamer : MonoBehaviour
                 if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", tex);
                 if (mat.HasProperty("_MainTex")) mat.SetTexture("_MainTex", tex);
             }
-            if (mat.HasProperty("_Cull")) mat.SetFloat("_Cull", 0f);
             mat.color = Color.white;
             rend.material = mat;
-            rend.renderMode = ParticleSystemRenderMode.Billboard;
         }
 
-        parent.AddComponent<NebulaCloud>();
-        return parent;
-    }
-
-    private GameObject BuildPlanet(System.Random rng)
-    {
-        GameObject go;
-        if (planetPrefab != null)
-        {
-            go = (GameObject)Instantiate(planetPrefab);
-        }
-        else
-        {
-            string meshPath = "Assets/Procedural Planets and Stars/Assets/Meshes/PPS_Sphere7992.fbx";
-            var meshAsset = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(meshPath);
-            if (meshAsset != null)
-            {
-                go = (GameObject)UnityEditor.PrefabUtility.InstantiatePrefab(meshAsset);
-                if (go == null) go = UnityEngine.Object.Instantiate(meshAsset);
-            }
-            else
-            {
-                go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            }
-        }
-        foreach (var c in go.GetComponentsInChildren<Collider>()) UnityEngine.Object.Destroy(c);
-        var sc = go.AddComponent<SphereCollider>();
-        sc.radius = 0.5f;
-        sc.isTrigger = true;
-        go.AddComponent<GasGiant>();
+        go.AddComponent<NebulaCloud>();
         return go;
     }
 

@@ -5483,8 +5483,8 @@ MonoBehaviour:
   compositeRadius: 0.9
   nebulaChance: 0.35
   planetChance: 0.06
-  nebulaMinScale: 18
-  nebulaMaxScale: 40
+  nebulaMinScale: 12
+  nebulaMaxScale: 25
   nebulaMaterial: {fileID: 2100000, guid: 364d4b8810e789cf0aff20fb332c21b1, type: 2}
 --- !u!4 &2035070394
 Transform:
