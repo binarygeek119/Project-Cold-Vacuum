@@ -2,56 +2,57 @@ using UnityEngine;
 using System.Collections.Generic;
 
 /// <summary>
-/// Streams an endless asteroid field around a target (the ship).
-/// Chunks load/unload seamlessly as the target moves; placement is
-/// deterministic per chunk so revisiting an area looks identical.
+/// Streams discrete star systems separated by empty space.
+/// Each system has a star, planets, asteroids, and (sometimes) nebula clouds.
+/// Between systems there is blank space (no spawning).
 /// </summary>
 public class SpaceStreamer : MonoBehaviour
 {
     [Header("Streaming")]
     public Transform target;
     public float chunkSize = 100f;
-    public int loadRadius = 1;     // chunks (cube) loaded around target
-    public int unloadRadius = 2;   // chunks beyond this are unloaded
-    public int asteroidsPerChunk = 2;
+    public int loadRadius = 1;
+    public int unloadRadius = 2;
     public int maxSpawnsPerFrame = 4;
     public int maxDestroysPerFrame = 4;
 
     [Header("Content")]
-    public GameObject asteroidPrefab;
     public Material asteroidMaterial;
-
-    [Header("Starter Kit prefabs")]
     public System.Collections.Generic.List<GameObject> asteroidPrefabs;
     public GameObject planetPrefab;
-
-    [Header("Starter Kit landmarks")]
     public GameObject stationPrefab;
-    public GameObject starPrefab;
     public GameObject enemyShipPrefab;
-    public float stationChance = 0.02f;
-    public float enemyChance = 0.04f;
-
-    [Header("Composite asteroids")]
-    public System.Collections.Generic.List<GameObject> asteroidModels;
-    public int minPieces = 2;
-    public int maxPieces = 4;
-    public float compositeRadius = 0.8f;
+    public GameObject starPrefab;
+    public Material nebulaMaterial;
 
     [Header("Nebula clouds")]
-    public float nebulaChance = 0.35f;          // probability per chunk
-    public float planetChance = 0.03f;           // probability per chunk (gas giants)
-    public float nebulaMinScale = 18f;
-    public float nebulaMaxScale = 40f;
-    public Material nebulaMaterial;
+    public float nebulaMinScale = 12f;
+    public float nebulaMaxScale = 25f;
+
+    [Header("Star systems")]
+    public int minSystems = 3;
+    public int maxSystems = 5;
 
     private readonly Dictionary<Vector3Int, Chunk> chunks = new Dictionary<Vector3Int, Chunk>();
     private readonly Queue<Vector3Int> loadQueue = new Queue<Vector3Int>();
     private readonly Queue<Vector3Int> unloadQueue = new Queue<Vector3Int>();
     private readonly HashSet<Vector3Int> queued = new HashSet<Vector3Int>();
 
-    private readonly Queue<GameObject> pool = new Queue<GameObject>();
     private Transform dome;
+
+    // Star systems
+    private readonly List<StarSystem> systems = new List<StarSystem>();
+
+    private class StarSystem
+    {
+        public Vector3 center;
+        public float radius;
+        public bool hasNebula;
+        public int planetCount;
+        public int asteroidCount;
+        public bool hasStation;
+        public bool hasEnemy;
+    }
 
     private class Chunk
     {
@@ -68,20 +69,51 @@ public class SpaceStreamer : MonoBehaviour
             else if (Camera.main != null) target = Camera.main.transform;
         }
         dome = GameObject.Find("Starfield Dome")?.transform;
-        if (asteroidMaterial == null)
+
+        GenerateSystems();
+    }
+
+    private void GenerateSystems()
+    {
+        systems.Clear();
+        int count = Random.Range(minSystems, maxSystems + 1);
+        float z = 0f;
+        for (int i = 0; i < count; i++)
         {
-            var sh = Shader.Find("Universal Render Pipeline/Lit");
-            if (sh == null) sh = Shader.Find("Standard");
-            asteroidMaterial = new Material(sh);
-            asteroidMaterial.color = new Color(0.55f, 0.5f, 0.45f);
+            // increasing gaps between systems for "blank space"
+            if (i > 0) z += Random.Range(400f, 700f);
+            float radius = Random.Range(150f, 280f);
+            var sys = new StarSystem
+            {
+                center = new Vector3(0f, 0f, z),
+                radius = radius,
+                hasNebula = Random.value < 0.5f, // some systems have nebula clouds
+                planetCount = Random.Range(0, 4),
+                asteroidCount = Random.Range(8, 25),
+                hasStation = Random.value < 0.4f,
+                hasEnemy = Random.value < 0.5f,
+            };
+            systems.Add(sys);
+            z += radius; // system extends to radius
         }
+    }
+
+    // Find which system (if any) a world position belongs to
+    private StarSystem GetSystem(Vector3 pos)
+    {
+        foreach (var sys in systems)
+        {
+            if (Vector3.Distance(pos, sys.center) <= sys.radius)
+                return sys;
+        }
+        return null;
     }
 
     void Update()
     {
         if (target == null) return;
 
-        // Keep starfield dome centered on the ship (endless space feel)
+        // Keep starfield dome centered on the ship
         if (dome != null) dome.position = target.position;
 
         Vector3Int center = WorldToChunk(target.position);
@@ -103,7 +135,7 @@ public class SpaceStreamer : MonoBehaviour
             }
         }
 
-        // Enqueue unloads (loaded chunks outside unload radius)
+        // Enqueue unloads
         foreach (var kv in chunks)
         {
             if (ChunkDistance(kv.Key, center) > unloadRadius && !queued.Contains(kv.Key))
@@ -113,20 +145,19 @@ public class SpaceStreamer : MonoBehaviour
             }
         }
 
-        // Process loads (limited per frame)
+        // Process loads
         int spawns = 0;
         while (loadQueue.Count > 0 && spawns < maxSpawnsPerFrame)
         {
             var coord = loadQueue.Dequeue();
             queued.Remove(coord);
             if (chunks.ContainsKey(coord)) continue;
-            // only load if still desired (avoid stale)
             if (!desired.Contains(coord)) continue;
             LoadChunk(coord);
             spawns++;
         }
 
-        // Process unloads (limited per frame)
+        // Process unloads
         int destroys = 0;
         while (unloadQueue.Count > 0 && destroys < maxDestroysPerFrame)
         {
@@ -143,89 +174,154 @@ public class SpaceStreamer : MonoBehaviour
         var chunk = new Chunk { coord = coord };
         chunks[coord] = chunk;
 
-        var rng = new System.Random(Hash(coord));
         Vector3 origin = new Vector3(coord.x, coord.y, coord.z) * chunkSize;
+        Vector3 chunkCenter = origin + new Vector3(chunkSize * 0.5f, chunkSize * 0.5f, chunkSize * 0.5f);
 
-        for (int i = 0; i < asteroidsPerChunk; i++)
+        // Check if this chunk is inside a star system
+        var sys = GetSystem(chunkCenter);
+        if (sys == null)
         {
-            Vector3 local = new Vector3(
-                (float)rng.NextDouble() * chunkSize,
-                (float)rng.NextDouble() * chunkSize,
-                (float)rng.NextDouble() * chunkSize);
-            Vector3 pos = origin + local;
-
-            var go = BuildAsteroid(rng);
-            go.transform.position = pos;
-            go.transform.rotation = Quaternion.Euler(
-                (float)rng.NextDouble() * 360f,
-                (float)rng.NextDouble() * 360f,
-                (float)rng.NextDouble() * 360f);
-            float sc = 1f + (float)rng.NextDouble() * 1.5f;
-            go.transform.localScale = Vector3.one * sc;
-            chunk.instances.Add(go);
+            // Blank space — no spawning
+            return;
         }
 
-        // Nebula cloud (random, colorful, glowing)
-        if (rng.NextDouble() < nebulaChance)
+        // Seeded RNG for this chunk
+        var rng = new System.Random(Hash(coord) ^ sys.center.GetHashCode());
+
+        // Spawn star (at system center chunk)
+        Vector3Int sysChunk = WorldToChunk(sys.center);
+        if (coord == sysChunk)
         {
-            var neb = BuildNebula(rng);
-            Vector3 nlocal = new Vector3(
-                (float)rng.NextDouble() * chunkSize,
-                (float)rng.NextDouble() * chunkSize,
-                (float)rng.NextDouble() * chunkSize);
-            neb.transform.position = origin + nlocal;
-            neb.transform.rotation = Quaternion.Euler(0f, (float)rng.NextDouble() * 360f, 0f);
-            float ns = nebulaMinScale + (float)rng.NextDouble() * (nebulaMaxScale - nebulaMinScale);
-            neb.transform.localScale = Vector3.one * ns;
-            chunk.instances.Add(neb);
+            if (starPrefab != null)
+            {
+                var star = (GameObject)Instantiate(starPrefab);
+                star.transform.position = sys.center;
+                star.transform.localScale = Vector3.one * Random.Range(8f, 20f);
+                chunk.instances.Add(star);
+            }
         }
 
-        // Gas giant planet (rare)
-        if (rng.NextDouble() < planetChance)
+        // Planets
+        for (int i = 0; i < sys.planetCount; i++)
         {
-            var planet = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            var pcol = planet.GetComponent<Collider>();
-            if (pcol != null) UnityEngine.Object.Destroy(pcol);
-            var psc = planet.AddComponent<SphereCollider>();
-            psc.radius = 0.5f;
-            psc.isTrigger = true;
-            planet.AddComponent<GasGiant>();
-            Vector3 plocal = new Vector3(
-                (float)rng.NextDouble() * chunkSize,
-                (float)rng.NextDouble() * chunkSize,
-                (float)rng.NextDouble() * chunkSize);
-            planet.transform.position = origin + plocal;
-            float pscale = 50f + (float)rng.NextDouble() * 70f;
-            planet.transform.localScale = Vector3.one * pscale;
+            // Distribute planets around the system center
+            Vector3 offset = Random.insideUnitSphere * (sys.radius * 0.6f);
+            offset.y *= 0.3f; // flatten
+            Vector3 pos = sys.center + offset;
+            // only spawn if this planet is in this chunk
+            if (WorldToChunk(pos) != coord) continue;
+
+            GameObject planet;
+            if (planetPrefab != null)
+            {
+                planet = (GameObject)Instantiate(planetPrefab);
+            }
+            else
+            {
+                planet = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                var col = planet.GetComponent<Collider>();
+                if (col != null) UnityEngine.Object.Destroy(col);
+                var sc = planet.AddComponent<SphereCollider>();
+                sc.radius = 0.5f;
+                sc.isTrigger = true;
+                planet.AddComponent<GasGiant>();
+            }
+            planet.transform.position = pos;
+            float pScale = Random.Range(50f, 120f);
+            planet.transform.localScale = Vector3.one * pScale;
             chunk.instances.Add(planet);
         }
 
-        // Station (rare landmark)
-        if (stationPrefab != null && rng.NextDouble() < stationChance)
+        // Asteroids
+        for (int i = 0; i < sys.asteroidCount; i++)
         {
-            var st = (GameObject)Instantiate(stationPrefab);
-            Vector3 slocal = new Vector3(
-                (float)rng.NextDouble() * chunkSize,
-                (float)rng.NextDouble() * chunkSize,
-                (float)rng.NextDouble() * chunkSize);
-            st.transform.position = origin + slocal;
-            st.transform.rotation = Quaternion.Euler(0f, (float)rng.NextDouble() * 360f, 0f);
-            chunk.instances.Add(st);
+            Vector3 aoffset = Random.insideUnitSphere * (sys.radius * 0.8f);
+            aoffset.y *= 0.4f;
+            Vector3 apos = sys.center + aoffset;
+            if (WorldToChunk(apos) != coord) continue;
+
+            GameObject ast;
+            if (asteroidPrefabs != null && asteroidPrefabs.Count > 0)
+            {
+                var prefab = asteroidPrefabs[rng.Next(asteroidPrefabs.Count)];
+                ast = (GameObject)Instantiate(prefab);
+                if (ast.GetComponent<Rigidbody>() == null)
+                {
+                    var prb = ast.AddComponent<Rigidbody>();
+                    prb.useGravity = false;
+                    prb.linearDamping = 1f;
+                    prb.angularDamping = 0.5f;
+                    ast.AddComponent<AsteroidMotion>();
+                }
+            }
+            else
+            {
+                ast = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                var rend = ast.GetComponent<Renderer>();
+                if (rend != null && asteroidMaterial != null) rend.sharedMaterial = asteroidMaterial;
+                if (ast.GetComponent<Collider>() == null) ast.AddComponent<SphereCollider>();
+                var prb = ast.AddComponent<Rigidbody>();
+                prb.useGravity = false;
+                prb.linearDamping = 1f;
+                prb.angularDamping = 0.5f;
+                ast.AddComponent<AsteroidMotion>();
+            }
+            ast.transform.position = apos;
+            float ascale = Random.Range(1f, 3f);
+            ast.transform.localScale = Vector3.one * ascale;
+            chunk.instances.Add(ast);
         }
 
-        // Enemy Viper (rare)
-        if (enemyShipPrefab != null && rng.NextDouble() < enemyChance)
+        // Station (rare, per system)
+        if (sys.hasStation && stationPrefab != null)
         {
-            var ev = (GameObject)Instantiate(enemyShipPrefab);
-            Vector3 elocal = new Vector3(
-                (float)rng.NextDouble() * chunkSize,
-                (float)rng.NextDouble() * chunkSize,
-                (float)rng.NextDouble() * chunkSize);
-            ev.transform.position = origin + elocal;
-            ev.transform.rotation = Quaternion.Euler(0f, (float)rng.NextDouble() * 360f, 0f);
-            // add enemy AI if not present
-            if (ev.GetComponent<EnemyShip>() == null) ev.AddComponent<EnemyShip>();
-            chunk.instances.Add(ev);
+            // place station near system edge
+            Vector3 stOffset = Random.insideUnitSphere * (sys.radius * 0.5f);
+            stOffset.y *= 0.2f;
+            Vector3 stPos = sys.center + stOffset;
+            if (WorldToChunk(stPos) == coord)
+            {
+                var st = (GameObject)Instantiate(stationPrefab);
+                st.transform.position = stPos;
+                st.transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+                chunk.instances.Add(st);
+            }
+        }
+
+        // Enemy Viper (per system)
+        if (sys.hasEnemy && enemyShipPrefab != null)
+        {
+            Vector3 eOffset = Random.insideUnitSphere * (sys.radius * 0.7f);
+            eOffset.y *= 0.3f;
+            Vector3 ePos = sys.center + eOffset;
+            if (WorldToChunk(ePos) == coord)
+            {
+                var ev = (GameObject)Instantiate(enemyShipPrefab);
+                ev.transform.position = ePos;
+                ev.transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+                if (ev.GetComponent<EnemyShip>() == null) ev.AddComponent<EnemyShip>();
+                chunk.instances.Add(ev);
+            }
+        }
+
+        // Nebula cloud (only in systems with nebula, and rare)
+        if (sys.hasNebula && rng.NextDouble() < 0.3f)
+        {
+            var neb = BuildNebula(rng);
+            Vector3 nOffset = Random.insideUnitSphere * (sys.radius * 0.6f);
+            nOffset.y *= 0.2f;
+            Vector3 nPos = sys.center + nOffset;
+            if (WorldToChunk(nPos) == coord)
+            {
+                neb.transform.position = nPos;
+                float ns = nebulaMinScale + (float)rng.NextDouble() * (nebulaMaxScale - nebulaMinScale);
+                neb.transform.localScale = Vector3.one * ns;
+                chunk.instances.Add(neb);
+            }
+            else
+            {
+                UnityEngine.Object.Destroy(neb);
+            }
         }
     }
 
@@ -234,79 +330,15 @@ public class SpaceStreamer : MonoBehaviour
         if (!chunks.TryGetValue(coord, out var chunk)) return;
         foreach (var go in chunk.instances)
         {
-            if (go != null)
-            {
-                UnityEngine.Object.Destroy(go);
-            }
+            if (go != null) UnityEngine.Object.Destroy(go);
         }
         chunk.instances.Clear();
         chunks.Remove(coord);
     }
 
-    private GameObject BuildAsteroid(System.Random rng)
-    {
-        if (asteroidPrefabs != null && asteroidPrefabs.Count > 0)
-        {
-            var prefab = asteroidPrefabs[rng.Next(asteroidPrefabs.Count)];
-            if (prefab != null)
-            {
-                var go = (GameObject)Instantiate(prefab);
-                // ensure collider
-                if (go.GetComponentInChildren<Collider>() == null)
-                {
-                    var sc = go.AddComponent<SphereCollider>();
-                    sc.radius = 0.5f;
-                }
-                // add rigidbody + motion if missing
-                if (go.GetComponent<Rigidbody>() == null)
-                {
-                    var prb = go.AddComponent<Rigidbody>();
-                    prb.useGravity = false;
-                    prb.linearDamping = 1f;
-                    prb.angularDamping = 0.5f;
-                    go.AddComponent<AsteroidMotion>();
-                }
-                return go;
-            }
-        }
-        // fallback: composite from asteroidModels
-        if (asteroidModels != null && asteroidModels.Count > 0)
-        {
-            return BuildCompositeAsteroid(rng);
-        }
-        // fallback: primitive
-        var prim = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        var rend = prim.GetComponent<Renderer>();
-        if (rend != null && asteroidMaterial != null) rend.sharedMaterial = asteroidMaterial;
-        if (prim.GetComponent<Collider>() == null) prim.AddComponent<SphereCollider>();
-        var prb2 = prim.AddComponent<Rigidbody>();
-        prb2.useGravity = false;
-        prb2.linearDamping = 1f;
-        prb2.angularDamping = 0.5f;
-        prim.AddComponent<AsteroidMotion>();
-        return prim;
-    }
-
-    private GameObject BuildCompositeAsteroid(System.Random rng)
-    {
-        // Fallback composite (unused when asteroidPrefabs is set)
-        var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        var rend = go.GetComponent<Renderer>();
-        if (rend != null && asteroidMaterial != null) rend.sharedMaterial = asteroidMaterial;
-        if (go.GetComponent<Collider>() == null) go.AddComponent<SphereCollider>();
-        var prb = go.AddComponent<Rigidbody>();
-        prb.useGravity = false;
-        prb.linearDamping = 1f;
-        prb.angularDamping = 0.5f;
-        go.AddComponent<AsteroidMotion>();
-        return go;
-    }
-
     private GameObject BuildNebula(System.Random rng)
     {
-        // 3D volumetric cloud: particle system forming a cloud volume
         var parent = new GameObject("Nebula Cloud");
-
         var ps = parent.AddComponent<ParticleSystem>();
         var main = ps.main;
         main.startLifetime = 15f;
@@ -324,47 +356,27 @@ public class SpaceStreamer : MonoBehaviour
         main.simulationSpace = ParticleSystemSimulationSpace.Local;
         main.playOnAwake = true;
         main.loop = true;
-
-        // emission
         var em = ps.emission;
         em.rateOverTime = 30f;
-
-        // shape: sphere volume
         var shape = ps.shape;
         shape.shapeType = ParticleSystemShapeType.Sphere;
         shape.radius = 1f;
-
-        // noise for organic movement
         var noise = ps.noise;
         noise.enabled = true;
         noise.strength = 0.5f;
         noise.frequency = 0.3f;
         noise.scrollSpeed = 0.15f;
         noise.damping = true;
-
-        // color over lifetime: fade in/out
         var col = ps.colorOverLifetime;
         col.enabled = true;
         var grad = new Gradient();
         grad.SetKeys(
-            new GradientColorKey[] {
-                new GradientColorKey(c, 0f),
-                new GradientColorKey(c, 1f)
-            },
-            new GradientAlphaKey[] {
-                new GradientAlphaKey(0f, 0f),
-                new GradientAlphaKey(0.5f, 0.2f),
-                new GradientAlphaKey(0.5f, 0.8f),
-                new GradientAlphaKey(0f, 1f)
-            });
+            new GradientColorKey[] { new GradientColorKey(c, 0f), new GradientColorKey(c, 1f) },
+            new GradientAlphaKey[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.5f, 0.2f), new GradientAlphaKey(0.5f, 0.8f), new GradientAlphaKey(0f, 1f) });
         col.color = grad;
-
-        // size over lifetime
         var sol = ps.sizeOverLifetime;
         sol.enabled = true;
         sol.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.EaseInOut(0f, 0.7f, 1f, 1.3f));
-
-        // renderer material
         var rend = parent.GetComponent<ParticleSystemRenderer>();
         if (rend != null)
         {
@@ -381,49 +393,8 @@ public class SpaceStreamer : MonoBehaviour
             rend.material = mat;
             rend.renderMode = ParticleSystemRenderMode.Billboard;
         }
-
         parent.AddComponent<NebulaCloud>();
         return parent;
-    }
-
-    private GameObject GetAsteroid()
-    {
-        if (pool.Count > 0)
-        {
-            var pooled = pool.Dequeue();
-            return pooled;
-        }
-        GameObject go;
-        if (asteroidPrefab != null)
-        {
-            go = Instantiate(asteroidPrefab);
-            if (go.GetComponentInChildren<Collider>() == null)
-            {
-                var sc = go.AddComponent<SphereCollider>();
-                sc.radius = 0.5f;
-            }
-            if (go.GetComponent<Rigidbody>() == null)
-            {
-                var prb = go.AddComponent<Rigidbody>();
-                prb.useGravity = false;
-                prb.linearDamping = 1f;
-                prb.angularDamping = 0.5f;
-                go.AddComponent<AsteroidMotion>();
-            }
-        }
-        else
-        {
-            go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            var rend = go.GetComponent<Renderer>();
-            if (rend != null && asteroidMaterial != null) rend.sharedMaterial = asteroidMaterial;
-            if (go.GetComponent<Collider>() == null) go.AddComponent<SphereCollider>();
-            var prb = go.AddComponent<Rigidbody>();
-            prb.useGravity = false;
-            prb.linearDamping = 1f;
-            prb.angularDamping = 0.5f;
-            go.AddComponent<AsteroidMotion>();
-        }
-        return go;
     }
 
     private Vector3Int WorldToChunk(Vector3 pos)
