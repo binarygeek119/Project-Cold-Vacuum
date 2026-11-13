@@ -172,7 +172,12 @@ public class SpaceStreamer : MonoBehaviour
         // Gas giant planet (rare)
         if (rng.NextDouble() < planetChance)
         {
-            var planet = BuildPlanet(rng);
+            var planet = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            var pcol = planet.GetComponent<Collider>();
+            if (pcol != null) UnityEngine.Object.Destroy(pcol);
+            var psc = planet.AddComponent<SphereCollider>();
+            psc.radius = 0.5f;
+            planet.AddComponent<GasGiant>();
             Vector3 plocal = new Vector3(
                 (float)rng.NextDouble() * chunkSize,
                 (float)rng.NextDouble() * chunkSize,
@@ -253,83 +258,92 @@ public class SpaceStreamer : MonoBehaviour
 
     private GameObject BuildNebula(System.Random rng)
     {
-        // Stratus-style: flat, wide, horizontal layered sheets
+        // Volumetric cloud using a particle system for a real 3D cloud look
         var parent = new GameObject("Nebula Cloud");
-        parent.AddComponent<NebulaCloud>();
 
-        var tex = (nebulaMaterial != null && nebulaMaterial.HasProperty("_BaseMap")) ? nebulaMaterial.GetTexture("_BaseMap") : null;
-
+        var ps = parent.AddComponent<ParticleSystem>();
+        var main = ps.main;
+        main.startLifetime = 20f;
+        main.startSpeed = 0.5f;
+        main.startSize = new ParticleSystem.MinMaxCurve(3f, 8f);
         Color[] palette = new Color[] {
-            new Color(1f, 0.3f, 0.6f),
-            new Color(0.4f, 0.6f, 1f),
-            new Color(0.6f, 0.3f, 1f),
-            new Color(0.3f, 1f, 0.8f),
-            new Color(1f, 0.6f, 0.2f),
-            new Color(0.8f, 0.2f, 1f),
+            new Color(1f, 0.95f, 0.9f),
+            new Color(0.9f, 0.95f, 1f),
+            new Color(1f, 0.9f, 0.95f),
+            new Color(0.95f, 1f, 0.95f),
         };
         Color c = palette[rng.Next(palette.Length)];
-        c = Color.Lerp(c, Color.white, 0.35f);
+        main.startColor = c;
+        main.maxParticles = 300;
+        main.simulationSpace = ParticleSystemSimulationSpace.Local;
+        main.playOnAwake = true;
+        main.loop = true;
 
-        int layers = 3 + rng.Next(0, 3); // 3-5 layers
-        for (int i = 0; i < layers; i++)
+        // emission
+        var em = ps.emission;
+        em.rateOverTime = 40f;
+
+        // shape: large sphere volume
+        var shape = ps.shape;
+        shape.shapeType = ParticleSystemShapeType.Sphere;
+        shape.radius = 1f;
+
+        // color over lifetime: fade in/out
+        var col = ps.colorOverLifetime;
+        col.enabled = true;
+        var grad = new Gradient();
+        grad.SetKeys(
+            new GradientColorKey[] {
+                new GradientColorKey(c, 0f),
+                new GradientColorKey(c, 1f)
+            },
+            new GradientAlphaKey[] {
+                new GradientAlphaKey(0f, 0f),
+                new GradientAlphaKey(0.6f, 0.2f),
+                new GradientAlphaKey(0.6f, 0.8f),
+                new GradientAlphaKey(0f, 1f)
+            });
+        col.color = grad;
+
+        // size over lifetime
+        var sol = ps.sizeOverLifetime;
+        sol.enabled = true;
+        sol.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.EaseInOut(0f, 0.6f, 1f, 1.2f));
+
+        // renderer material
+        var rend = parent.GetComponent<ParticleSystemRenderer>();
+        if (rend != null)
         {
-            var q = GameObject.CreatePrimitive(PrimitiveType.Quad);
-            var col = q.GetComponent<Collider>();
-            if (col != null) UnityEngine.Object.Destroy(col);
-            q.transform.SetParent(parent.transform, false);
-            // flat horizontal sheet with varied rotation and offset
-            float layerRot = rng.Next(0, 360);
-            float layerY = (i - (layers - 1) / 2f) * (0.8f + (float)rng.NextDouble() * 0.6f);
-            float layerX = ((float)rng.NextDouble() - 0.5f) * 2f;
-            float layerZ = ((float)rng.NextDouble() - 0.5f) * 2f;
-            q.transform.localRotation = Quaternion.Euler(90f + (float)(rng.NextDouble() - 0.5) * 8f, layerRot, 0f);
-            q.transform.localPosition = new Vector3(layerX, layerY, layerZ);
-            float w = 0.7f + (float)rng.NextDouble() * 0.8f;
-            float h = 0.7f + (float)rng.NextDouble() * 0.8f;
-            q.transform.localScale = new Vector3(w, h, 1f) * (nebulaMinScale * 1.2f);
-
-            var rend = q.GetComponent<MeshRenderer>();
-            if (rend != null)
+            var tex = (nebulaMaterial != null && nebulaMaterial.HasProperty("_BaseMap")) ? nebulaMaterial.GetTexture("_BaseMap") : null;
+            var sh = Shader.Find("Universal Render Pipeline/Particles/Unlit");
+            if (sh == null) sh = Shader.Find("Universal Render Pipeline/Unlit");
+            if (sh == null) sh = Shader.Find("Unlit/Color");
+            var mat = new Material(sh);
+            if (tex != null)
             {
-                Material baseMat = nebulaMaterial;
-                if (baseMat == null)
-                {
-                    var sh = Shader.Find("Universal Render Pipeline/Particles/Unlit");
-                    if (sh == null) sh = Shader.Find("Universal Render Pipeline/Unlit");
-                    if (sh == null) sh = Shader.Find("Unlit/Color");
-                    baseMat = new Material(sh);
-                }
-                var inst = new Material(baseMat);
-                if (tex != null)
-                {
-                    if (inst.HasProperty("_BaseMap")) inst.SetTexture("_BaseMap", tex);
-                    if (inst.HasProperty("_MainTex")) inst.SetTexture("_MainTex", tex);
-                }
-                if (inst.HasProperty("_Surface")) inst.SetFloat("_Surface", 1f);
-                if (inst.HasProperty("_Blend")) inst.SetFloat("_Blend", 2f);
-                if (inst.HasProperty("_Cull")) inst.SetFloat("_Cull", 0f);
-                if (inst.HasProperty("_ZWrite")) inst.SetFloat("_ZWrite", 0f);
-                // slight color variation per layer
-                Color layerColor = Color.Lerp(c, palette[rng.Next(palette.Length)], 0.3f);
-                layerColor.a = 0.7f;
-                inst.color = layerColor;
-                if (inst.HasProperty("_BaseColor")) inst.SetColor("_BaseColor", layerColor);
-                rend.material = inst;
+                if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", tex);
+                if (mat.HasProperty("_MainTex")) mat.SetTexture("_MainTex", tex);
             }
+            if (mat.HasProperty("_Surface")) mat.SetFloat("_Surface", 1f);
+            if (mat.HasProperty("_Blend")) mat.SetFloat("_Blend", 2f);
+            if (mat.HasProperty("_Cull")) mat.SetFloat("_Cull", 0f);
+            if (mat.HasProperty("_ZWrite")) mat.SetFloat("_ZWrite", 0f);
+            mat.color = Color.white;
+            rend.material = mat;
+            rend.renderMode = ParticleSystemRenderMode.Billboard;
         }
 
+        parent.AddComponent<NebulaCloud>();
         return parent;
     }
 
     private GameObject BuildPlanet(System.Random rng)
     {
         var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        // remove default collider, add sphere collider
         var col = go.GetComponent<Collider>();
         if (col != null) UnityEngine.Object.Destroy(col);
         var sc = go.AddComponent<SphereCollider>();
         sc.radius = 0.5f;
-
         go.AddComponent<GasGiant>();
         return go;
     }
