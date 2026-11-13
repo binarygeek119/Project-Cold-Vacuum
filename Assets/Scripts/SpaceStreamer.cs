@@ -329,8 +329,11 @@ public class SpaceStreamer : MonoBehaviour
         // Planets
         for (int i = 0; i < sys.planetCount; i++)
         {
-            // Distribute planets around the system center
-            Vector3 offset = Random.insideUnitSphere * (sys.radius * 0.6f);
+            // Distribute planets around the system center (using seeded RNG for deterministic positions)
+            float rx = (float)(rng.NextDouble() * 2 - 1);
+            float ry = (float)(rng.NextDouble() * 2 - 1);
+            float rz = (float)(rng.NextDouble() * 2 - 1);
+            Vector3 offset = new Vector3(rx, ry, rz).normalized * (float)(rng.NextDouble() * sys.radius * 0.6);
             offset.y *= 0.3f; // flatten
             Vector3 pos = sys.center + offset;
             // only spawn if this planet is in this chunk
