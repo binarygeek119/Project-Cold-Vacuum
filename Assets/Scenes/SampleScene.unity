@@ -5485,7 +5485,7 @@ MonoBehaviour:
   planetChance: 0.06
   nebulaMinScale: 18
   nebulaMaxScale: 40
-  nebulaMaterial: {fileID: 2100000, guid: 3672851f051c80180ad79f4cb905f141, type: 2}
+  nebulaMaterial: {fileID: 2100000, guid: 364d4b8810e789cf0aff20fb332c21b1, type: 2}
 --- !u!4 &2035070394
 Transform:
   m_ObjectHideFlags: 0

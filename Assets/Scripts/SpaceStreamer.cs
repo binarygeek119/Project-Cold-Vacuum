@@ -334,19 +334,16 @@ public class SpaceStreamer : MonoBehaviour
         if (rend != null)
         {
             var tex = (nebulaMaterial != null && nebulaMaterial.HasProperty("_BaseMap")) ? nebulaMaterial.GetTexture("_BaseMap") : null;
-            var sh = Shader.Find("Universal Render Pipeline/Particles/Unlit");
+            var sh = Shader.Find("Custom/CloudParticle");
+            if (sh == null) sh = Shader.Find("Universal Render Pipeline/Particles/Unlit");
             if (sh == null) sh = Shader.Find("Universal Render Pipeline/Unlit");
-            if (sh == null) sh = Shader.Find("Unlit/Color");
             var mat = new Material(sh);
             if (tex != null)
             {
                 if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", tex);
                 if (mat.HasProperty("_MainTex")) mat.SetTexture("_MainTex", tex);
             }
-            if (mat.HasProperty("_SurfaceType")) mat.SetFloat("_SurfaceType", 1f);   // transparent
-            if (mat.HasProperty("_BlendMode")) mat.SetFloat("_BlendMode", 2f);       // additive
-            if (mat.HasProperty("_Cull")) mat.SetFloat("_Cull", 0f);                 // off
-            if (mat.HasProperty("_ZWrite")) mat.SetFloat("_ZWrite", 0f);
+            if (mat.HasProperty("_Cull")) mat.SetFloat("_Cull", 0f);
             mat.color = Color.white;
             rend.material = mat;
             rend.renderMode = ParticleSystemRenderMode.Billboard;
