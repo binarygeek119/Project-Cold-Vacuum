@@ -115,9 +115,18 @@ public class ShipController : MonoBehaviour
         {
             _rb.AddForce(transform.forward * thrust * thrustForce, ForceMode.Acceleration);
         }
-        else if (brake > triggerDeadzone && _rb.linearVelocity.sqrMagnitude > 0.01f)
+        else if (brake > triggerDeadzone)
         {
-            _rb.AddForce(-_rb.linearVelocity.normalized * brake * brakeForce, ForceMode.Acceleration);
+            // Slow down first, then reverse at slower rate
+            if (_rb.linearVelocity.sqrMagnitude > 0.5f)
+            {
+                _rb.AddForce(-_rb.linearVelocity.normalized * brake * brakeForce, ForceMode.Acceleration);
+            }
+            else
+            {
+                // fully slowed: apply reverse thrust (slower than forward)
+                _rb.AddForce(-transform.forward * brake * thrustForce * 0.4f, ForceMode.Acceleration);
+            }
         }
         else
         {
@@ -141,7 +150,7 @@ public class ShipController : MonoBehaviour
         if (model != null)
         {
             var baseRot = Quaternion.Euler(0f, -90f, 0f);
-            model.localRotation = baseRot * Quaternion.Euler(0f, 0f, _bank);
+            model.localRotation = baseRot * Quaternion.Euler(_bank, 0f, 0f);
         }
 
         // --- thrusters ---
