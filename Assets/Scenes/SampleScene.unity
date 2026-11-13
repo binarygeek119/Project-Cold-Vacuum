@@ -5479,7 +5479,7 @@ MonoBehaviour:
   minPieces: 2
   maxPieces: 4
   compositeRadius: 0.9
-  nebulaChance: 0
+  nebulaChance: 0.35
   planetChance: 0.06
   nebulaMinScale: 18
   nebulaMaxScale: 40

@@ -266,7 +266,7 @@ public class SpaceStreamer : MonoBehaviour
         var main = ps.main;
         main.startLifetime = 20f;
         main.startSpeed = 0.5f;
-        main.startSize = new ParticleSystem.MinMaxCurve(3f, 8f);
+        main.startSize = new ParticleSystem.MinMaxCurve(4f, 10f);
         Color[] palette = new Color[] {
             new Color(1f, 0.95f, 0.9f),
             new Color(0.9f, 0.95f, 1f),
@@ -275,19 +275,27 @@ public class SpaceStreamer : MonoBehaviour
         };
         Color c = palette[rng.Next(palette.Length)];
         main.startColor = c;
-        main.maxParticles = 300;
+        main.maxParticles = 500;
         main.simulationSpace = ParticleSystemSimulationSpace.Local;
         main.playOnAwake = true;
         main.loop = true;
 
         // emission
         var em = ps.emission;
-        em.rateOverTime = 40f;
+        em.rateOverTime = 60f;
 
         // shape: large sphere volume
         var shape = ps.shape;
         shape.shapeType = ParticleSystemShapeType.Sphere;
-        shape.radius = 1f;
+        shape.radius = 1.5f;
+
+        // noise for organic movement
+        var noise = ps.noise;
+        noise.enabled = true;
+        noise.strength = 0.8f;
+        noise.frequency = 0.3f;
+        noise.scrollSpeed = 0.2f;
+        noise.damping = true;
 
         // color over lifetime: fade in/out
         var col = ps.colorOverLifetime;
