@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 90db142215d63324bbf1eaa837cb261a
+AssetOrigin:
+  serializedVersion: 1
+  productId: 106662
+  packageName: Procedural Planets and Stars
+  packageVersion: 1.3.5
+  assetPath: Assets/Procedural Planets and Stars/Assets/Substances/PPS_SBSAR_Sun.sbsar
+  uploadId: 302754
+ScriptedImporter:
+  internalIDToNameTable: []
+  externalObjects: {}
+  serializedVersion: 2
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+  script: {fileID: 11500000, guid: dda12f74ff9116a42b23482252b2c482, type: 3}
+  _fileAsset: {instanceID: 0}

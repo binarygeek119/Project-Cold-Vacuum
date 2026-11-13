@@ -348,11 +348,22 @@ public class SpaceStreamer : MonoBehaviour
 
     private GameObject BuildPlanet(System.Random rng)
     {
-        var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        var col = go.GetComponent<Collider>();
-        if (col != null) UnityEngine.Object.Destroy(col);
+        string meshPath = "Assets/Procedural Planets and Stars/Assets/Meshes/PPS_Sphere7992.fbx";
+        var meshAsset = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(meshPath);
+        GameObject go;
+        if (meshAsset != null)
+        {
+            go = (GameObject)UnityEditor.PrefabUtility.InstantiatePrefab(meshAsset);
+            if (go == null) go = UnityEngine.Object.Instantiate(meshAsset);
+        }
+        else
+        {
+            go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        }
+        foreach (var c in go.GetComponentsInChildren<Collider>()) UnityEngine.Object.Destroy(c);
         var sc = go.AddComponent<SphereCollider>();
         sc.radius = 0.5f;
+        sc.isTrigger = true;
         go.AddComponent<GasGiant>();
         return go;
     }
