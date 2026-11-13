@@ -5473,6 +5473,8 @@ MonoBehaviour:
   maxDestroysPerFrame: 4
   asteroidPrefab: {fileID: 919132149155446097, guid: 18f87fd391b64d26a954f8401f9a6afe, type: 3}
   asteroidMaterial: {fileID: 2100000, guid: 563c4be7c5266c855be2e8da0a26d332, type: 2}
+  asteroidPrefabs: []
+  planetPrefab: {fileID: 0}
   asteroidModels:
   - {fileID: 919132149155446097, guid: 18f87fd391b64d26a954f8401f9a6afe, type: 3}
   - {fileID: 919132149155446097, guid: 951c75998fc36e5ed9b5923b0a8900c3, type: 3}

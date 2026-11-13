@@ -21,6 +21,10 @@ public class SpaceStreamer : MonoBehaviour
     public GameObject asteroidPrefab;
     public Material asteroidMaterial;
 
+    [Header("Starter Kit prefabs")]
+    public System.Collections.Generic.List<GameObject> asteroidPrefabs;
+    public GameObject planetPrefab;
+
     [Header("Composite asteroids")]
     public System.Collections.Generic.List<GameObject> asteroidModels;
     public int minPieces = 2;
@@ -206,55 +210,61 @@ public class SpaceStreamer : MonoBehaviour
 
     private GameObject BuildAsteroid(System.Random rng)
     {
-        // If no models provided, fall back to single primitive/prefab
-        if (asteroidModels == null || asteroidModels.Count == 0)
+        if (asteroidPrefabs != null && asteroidPrefabs.Count > 0)
         {
-            return GetAsteroid();
-        }
-
-        var parent = new GameObject("Composite Asteroid");
-        int pieces = Mathf.Clamp(rng.Next(minPieces, maxPieces + 1), 1, 10);
-
-        for (int p = 0; p < pieces; p++)
-        {
-            var model = asteroidModels[rng.Next(asteroidModels.Count)];
-            if (model == null) continue;
-            var child = (GameObject)Instantiate(model);
-            child.transform.SetParent(parent.transform, false);
-            // random offset within composite radius
-            Vector3 off = new Vector3(
-                ((float)rng.NextDouble() * 2f - 1f) * compositeRadius,
-                ((float)rng.NextDouble() * 2f - 1f) * compositeRadius * 0.6f,
-                ((float)rng.NextDouble() * 2f - 1f) * compositeRadius);
-            child.transform.localPosition = off;
-            child.transform.localRotation = Quaternion.Euler(
-                (float)rng.NextDouble() * 360f,
-                (float)rng.NextDouble() * 360f,
-                (float)rng.NextDouble() * 360f);
-            float sc = 0.5f + (float)rng.NextDouble() * 1.0f;
-            child.transform.localScale = Vector3.one * sc;
-
-            // ensure collider
-            if (child.GetComponentInChildren<Collider>() == null)
+            var prefab = asteroidPrefabs[rng.Next(asteroidPrefabs.Count)];
+            if (prefab != null)
             {
-                var scol = child.AddComponent<SphereCollider>();
-                scol.radius = 0.5f;
+                var go = (GameObject)Instantiate(prefab);
+                // ensure collider
+                if (go.GetComponentInChildren<Collider>() == null)
+                {
+                    var sc = go.AddComponent<SphereCollider>();
+                    sc.radius = 0.5f;
+                }
+                // add rigidbody + motion if missing
+                if (go.GetComponent<Rigidbody>() == null)
+                {
+                    var prb = go.AddComponent<Rigidbody>();
+                    prb.useGravity = false;
+                    prb.linearDamping = 1f;
+                    prb.angularDamping = 0.5f;
+                    go.AddComponent<AsteroidMotion>();
+                }
+                return go;
             }
         }
+        // fallback: composite from asteroidModels
+        if (asteroidModels != null && asteroidModels.Count > 0)
+        {
+            return BuildCompositeAsteroid(rng);
+        }
+        // fallback: primitive
+        var prim = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        var rend = prim.GetComponent<Renderer>();
+        if (rend != null && asteroidMaterial != null) rend.sharedMaterial = asteroidMaterial;
+        if (prim.GetComponent<Collider>() == null) prim.AddComponent<SphereCollider>();
+        var prb2 = prim.AddComponent<Rigidbody>();
+        prb2.useGravity = false;
+        prb2.linearDamping = 1f;
+        prb2.angularDamping = 0.5f;
+        prim.AddComponent<AsteroidMotion>();
+        return prim;
+    }
 
-        // physics: rigidbody so impacts move it + orbit/spin motion
-        var prb = parent.AddComponent<Rigidbody>();
+    private GameObject BuildCompositeAsteroid(System.Random rng)
+    {
+        // Fallback composite (unused when asteroidPrefabs is set)
+        var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        var rend = go.GetComponent<Renderer>();
+        if (rend != null && asteroidMaterial != null) rend.sharedMaterial = asteroidMaterial;
+        if (go.GetComponent<Collider>() == null) go.AddComponent<SphereCollider>();
+        var prb = go.AddComponent<Rigidbody>();
         prb.useGravity = false;
         prb.linearDamping = 1f;
         prb.angularDamping = 0.5f;
-        prb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
-        parent.AddComponent<AsteroidMotion>();
-
-        // add a compound sphere collider on parent for physics (approx)
-        var parentCol = parent.AddComponent<SphereCollider>();
-        parentCol.radius = compositeRadius * 1.2f;
-
-        return parent;
+        go.AddComponent<AsteroidMotion>();
+        return go;
     }
 
     private GameObject BuildNebula(System.Random rng)
@@ -266,7 +276,7 @@ public class SpaceStreamer : MonoBehaviour
         var main = ps.main;
         main.startLifetime = 20f;
         main.startSpeed = 0.5f;
-        main.startSize = new ParticleSystem.MinMaxCurve(4f, 10f);
+        main.startSize = new ParticleSystem.MinMaxCurve(2f, 5f);
         Color[] palette = new Color[] {
             new Color(1f, 0.95f, 0.9f),
             new Color(0.9f, 0.95f, 1f),
@@ -275,24 +285,24 @@ public class SpaceStreamer : MonoBehaviour
         };
         Color c = palette[rng.Next(palette.Length)];
         main.startColor = c;
-        main.maxParticles = 500;
+        main.maxParticles = 120;
         main.simulationSpace = ParticleSystemSimulationSpace.Local;
         main.playOnAwake = true;
         main.loop = true;
 
         // emission
         var em = ps.emission;
-        em.rateOverTime = 60f;
+        em.rateOverTime = 20f;
 
         // shape: large sphere volume
         var shape = ps.shape;
         shape.shapeType = ParticleSystemShapeType.Sphere;
-        shape.radius = 1.5f;
+        shape.radius = 0.8f;
 
         // noise for organic movement
         var noise = ps.noise;
         noise.enabled = true;
-        noise.strength = 0.8f;
+        noise.strength = 0.4f;
         noise.frequency = 0.3f;
         noise.scrollSpeed = 0.2f;
         noise.damping = true;
@@ -348,17 +358,24 @@ public class SpaceStreamer : MonoBehaviour
 
     private GameObject BuildPlanet(System.Random rng)
     {
-        string meshPath = "Assets/Procedural Planets and Stars/Assets/Meshes/PPS_Sphere7992.fbx";
-        var meshAsset = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(meshPath);
         GameObject go;
-        if (meshAsset != null)
+        if (planetPrefab != null)
         {
-            go = (GameObject)UnityEditor.PrefabUtility.InstantiatePrefab(meshAsset);
-            if (go == null) go = UnityEngine.Object.Instantiate(meshAsset);
+            go = (GameObject)Instantiate(planetPrefab);
         }
         else
         {
-            go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            string meshPath = "Assets/Procedural Planets and Stars/Assets/Meshes/PPS_Sphere7992.fbx";
+            var meshAsset = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(meshPath);
+            if (meshAsset != null)
+            {
+                go = (GameObject)UnityEditor.PrefabUtility.InstantiatePrefab(meshAsset);
+                if (go == null) go = UnityEngine.Object.Instantiate(meshAsset);
+            }
+            else
+            {
+                go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            }
         }
         foreach (var c in go.GetComponentsInChildren<Collider>()) UnityEngine.Object.Destroy(c);
         var sc = go.AddComponent<SphereCollider>();
