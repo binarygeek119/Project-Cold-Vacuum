@@ -236,29 +236,30 @@ public class SpaceStreamer : MonoBehaviour
             light.intensity = 8f;
             light.range = starScale * 8f;
 
-            // Large glowing billboard (always visible from far)
-            var billboard = GameObject.CreatePrimitive(PrimitiveType.Quad);
-            billboard.name = "Star Glow";
-            billboard.transform.SetParent(farGO.transform, false);
-            billboard.transform.localScale = Vector3.one * starScale * 2f;
-            var bcol = billboard.GetComponent<Collider>();
-            if (bcol != null) UnityEngine.Object.Destroy(bcol);
-            var brend = billboard.GetComponent<Renderer>();
-            if (brend != null)
+            // Large glowing sphere (always visible from far, no pink box)
+            var glowSphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            glowSphere.name = "Star Glow";
+            glowSphere.transform.SetParent(farGO.transform, false);
+            glowSphere.transform.localScale = Vector3.one * starScale * 1.5f;
+            var gsCol = glowSphere.GetComponent<Collider>();
+            if (gsCol != null) UnityEngine.Object.Destroy(gsCol);
+            var gsRend = glowSphere.GetComponent<Renderer>();
+            if (gsRend != null)
             {
-                var sh = Shader.Find("Custom/CloudParticle");
-                if (sh == null) sh = Shader.Find("Universal Render Pipeline/Unlit");
-                if (sh == null) sh = Shader.Find("Unlit/Color");
+                var sh = Shader.Find("Universal Render Pipeline/Lit");
+                if (sh == null) sh = Shader.Find("Standard");
                 var mat = new Material(sh);
-                var starTex = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/ParticleSoftCircle.png");
-                if (starTex != null && mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", starTex);
-                if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", new Color(1f, 0.95f, 0.8f, 0.9f));
-                mat.color = new Color(1f, 0.95f, 0.8f, 0.9f);
-                brend.material = mat;
-                brend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                Color sc = new Color(1f, 0.95f, 0.8f);
+                if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", sc);
+                mat.color = sc;
+                if (mat.HasProperty("_EmissionColor"))
+                {
+                    mat.EnableKeyword("_EMISSION");
+                    mat.SetColor("_EmissionColor", sc * 3f);
+                }
+                gsRend.material = mat;
+                gsRend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             }
-            // billboard faces camera
-            billboard.AddComponent<BillboardToCamera>();
 
             // twinkle particle
             var twinkle = farGO.AddComponent<ParticleSystem>();

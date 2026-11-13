@@ -94,7 +94,9 @@ public class StarField : MonoBehaviour
         if (brend != null)
         {
             var sh = Shader.Find("Custom/CloudParticle");
-            if (sh == null) sh = Shader.Find("Universal Render Pipeline/Unlit");
+            if (sh == null) { Debug.LogError("StarField: CloudParticle shader not found"); sh = Shader.Find("Universal Render Pipeline/Unlit"); }
+            if (sh == null) sh = Shader.Find("Unlit/Color");
+            if (sh == null) { Debug.LogError("StarField: no shader found"); sh = Shader.Find("Standard"); }
             var mat = new Material(sh);
             Color starColor = RandomStarColor();
             mat.color = starColor;
@@ -127,6 +129,22 @@ public class StarField : MonoBehaviour
             new GradientColorKey[] { new GradientColorKey(new Color(1f, 0.95f, 0.8f), 0f) },
             new GradientAlphaKey[] { new GradientAlphaKey(0.7f, 0f), new GradientAlphaKey(0.2f, 0.5f), new GradientAlphaKey(0.7f, 1f) });
         tcol.color = tgrad;
+
+        // Fix twinkle material (avoid pink)
+        var twinkleRend = farGO.GetComponent<ParticleSystemRenderer>();
+        if (twinkleRend != null)
+        {
+            var sh = Shader.Find("Custom/CloudParticle");
+            if (sh == null) sh = Shader.Find("Universal Render Pipeline/Particles/Unlit");
+            if (sh != null)
+            {
+                var mat = new Material(sh);
+                var tex = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/ParticleSoftCircle.png");
+                if (tex != null && mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", tex);
+                mat.color = new Color(1f, 0.95f, 0.8f, 0.9f);
+                twinkleRend.material = mat;
+            }
+        }
 
         // Point light
         var light = farGO.AddComponent<Light>();
