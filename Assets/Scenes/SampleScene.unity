@@ -188,6 +188,8 @@ MonoBehaviour:
   verticalBar: {fileID: 391995263}
   horizontalPin: {fileID: 0}
   verticalPin: {fileID: 0}
+  starHorizontalPin: {fileID: 0}
+  starVerticalPin: {fileID: 0}
   targetLabel: {fileID: 1850921757}
   maxAngle: 90
   barWidth: 576

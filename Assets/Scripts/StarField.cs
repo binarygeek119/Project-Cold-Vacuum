@@ -110,41 +110,7 @@ public class StarField : MonoBehaviour
         }
         billboard.AddComponent<BillboardToCamera>();
 
-        // Twinkle particle
-        var twinkle = farGO.AddComponent<ParticleSystem>();
-        var tmain = twinkle.main;
-        tmain.startLifetime = 1f;
-        tmain.startSpeed = 0f;
-        tmain.startSize = Random.Range(1f, 3f);
-        tmain.startColor = new Color(1f, 0.95f, 0.8f, 1f);
-        tmain.maxParticles = 1;
-        tmain.loop = true;
-        tmain.playOnAwake = true;
-        var tem = twinkle.emission;
-        tem.rateOverTime = 1.5f;
-        var tcol = twinkle.colorOverLifetime;
-        tcol.enabled = true;
-        var tgrad = new Gradient();
-        tgrad.SetKeys(
-            new GradientColorKey[] { new GradientColorKey(new Color(1f, 0.95f, 0.8f), 0f) },
-            new GradientAlphaKey[] { new GradientAlphaKey(0.7f, 0f), new GradientAlphaKey(0.2f, 0.5f), new GradientAlphaKey(0.7f, 1f) });
-        tcol.color = tgrad;
-
-        // Fix twinkle material (avoid pink)
-        var twinkleRend = farGO.GetComponent<ParticleSystemRenderer>();
-        if (twinkleRend != null)
-        {
-            var sh = Shader.Find("Custom/CloudParticle");
-            if (sh == null) sh = Shader.Find("Universal Render Pipeline/Particles/Unlit");
-            if (sh != null)
-            {
-                var mat = new Material(sh);
-                var tex = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/ParticleSoftCircle.png");
-                if (tex != null && mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", tex);
-                mat.color = new Color(1f, 0.95f, 0.8f, 0.9f);
-                twinkleRend.material = mat;
-            }
-        }
+        // (Twinkle particle removed - was rendering as pink box)
 
         // Point light
         var light = farGO.AddComponent<Light>();

@@ -5,15 +5,17 @@ using System.Collections.Generic;
 /// <summary>
 /// 3D compass (Skyrim-style) with horizontal bar (top) and vertical bar (left).
 /// Bars are fixed in place; pins rotate like gauge needles to point at targets.
-/// Supports MULTIPLE pins (one per target in the current star system).
+/// Supports MULTIPLE pins (one per target) plus a dedicated yellow STAR pin.
 /// Each pin is colored to match its target object.
 /// </summary>
 public class CompassHUD3D : MonoBehaviour
 {
     public RawImage horizontalBar;
     public RawImage verticalBar;
-    public RectTransform horizontalPin;  // template (hidden) for spawning pins
+    public RectTransform horizontalPin;   // template (hidden) for spawning pins
     public RectTransform verticalPin;
+    public RectTransform starHorizontalPin; // dedicated yellow star pin (template)
+    public RectTransform starVerticalPin;
     public Text targetLabel;
 
     public float maxAngle = 90f;
@@ -22,6 +24,7 @@ public class CompassHUD3D : MonoBehaviour
 
     private SpaceStreamer _streamer;
     private List<PinEntry> _pins = new List<PinEntry>();
+    private Transform _nearestStar;
 
     private class PinEntry
     {
@@ -36,6 +39,8 @@ public class CompassHUD3D : MonoBehaviour
         // Hide templates
         if (horizontalPin != null) horizontalPin.gameObject.SetActive(false);
         if (verticalPin != null) verticalPin.gameObject.SetActive(false);
+        if (starHorizontalPin != null) starHorizontalPin.gameObject.SetActive(false);
+        if (starVerticalPin != null) starVerticalPin.gameObject.SetActive(false);
     }
 
     void Update()
@@ -70,10 +75,22 @@ public class CompassHUD3D : MonoBehaviour
             }
         }
 
+        // Find nearest star in current system
+        _nearestStar = null;
+        float minStarDist = float.MaxValue;
+        foreach (var t in targets)
+        {
+            if (t == null) continue;
+            bool isStar = t.name.Contains("Star") || t.GetComponent<StarLOD>() != null;
+            if (!isStar) continue;
+            float d = Vector3.Distance(ship.transform.position, t.position);
+            if (d < minStarDist) { minStarDist = d; _nearestStar = t; }
+        }
+
         // Sync pins: create new, remove stale
         SyncPins(targets);
 
-        // If no targets (blank space), hide all pins and label
+        // Hide all pins when no targets
         if (targets.Count == 0)
         {
             foreach (var entry in _pins)
@@ -81,6 +98,8 @@ public class CompassHUD3D : MonoBehaviour
                 if (entry.hPin != null) entry.hPin.gameObject.SetActive(false);
                 if (entry.vPin != null) entry.vPin.gameObject.SetActive(false);
             }
+            if (starHorizontalPin != null) starHorizontalPin.gameObject.SetActive(false);
+            if (starVerticalPin != null) starVerticalPin.gameObject.SetActive(false);
             if (targetLabel != null) targetLabel.gameObject.SetActive(false);
             return;
         }
@@ -99,15 +118,11 @@ public class CompassHUD3D : MonoBehaviour
             if (toTarget.sqrMagnitude < 0.01f) continue;
             Vector3 dir = toTarget.normalized;
 
-            // Horizontal angle
             Vector3 horizDir = new Vector3(dir.x, 0f, dir.z);
             if (horizDir.sqrMagnitude > 0.001f) horizDir.Normalize();
             float hAngle = Vector3.SignedAngle(forward, horizDir, Vector3.up);
-
-            // Vertical angle
             float vAngle = Mathf.Asin(Mathf.Clamp(dir.y, -1f, 1f)) * Mathf.Rad2Deg;
 
-            // Horizontal pin: rotate like gauge needle
             bool hVisible = Mathf.Abs(hAngle) <= maxAngle;
             entry.hPin.gameObject.SetActive(hVisible);
             if (hVisible)
@@ -116,7 +131,6 @@ public class CompassHUD3D : MonoBehaviour
                 entry.hPin.localRotation = Quaternion.Euler(0f, 0f, -hAngle);
             }
 
-            // Vertical pin
             bool vVisible = Mathf.Abs(vAngle) <= maxAngle;
             entry.vPin.gameObject.SetActive(vVisible);
             if (vVisible)
@@ -125,7 +139,6 @@ public class CompassHUD3D : MonoBehaviour
                 entry.vPin.localRotation = Quaternion.Euler(0f, 0f, vAngle);
             }
 
-            // Color
             var ct = entry.target.GetComponent<CompassTarget>();
             Color pinColor = ct != null ? ct.displayColor : Color.white;
             var hImg = entry.hPin.GetComponent<Image>();
@@ -134,7 +147,51 @@ public class CompassHUD3D : MonoBehaviour
             if (vImg != null) vImg.color = pinColor;
         }
 
-        // Label: show nearest target
+        // Update dedicated yellow STAR pins
+        if (_nearestStar != null)
+        {
+            Vector3 toStar = _nearestStar.position - ship.transform.position;
+            if (toStar.sqrMagnitude > 0.01f)
+            {
+                Vector3 starDir = toStar.normalized;
+                Vector3 starHoriz = new Vector3(starDir.x, 0f, starDir.z);
+                if (starHoriz.sqrMagnitude > 0.001f) starHoriz.Normalize();
+                float starHAngle = Vector3.SignedAngle(forward, starHoriz, Vector3.up);
+                float starVAngle = Mathf.Asin(Mathf.Clamp(starDir.y, -1f, 1f)) * Mathf.Rad2Deg;
+
+                if (starHorizontalPin != null)
+                {
+                    bool vis = Mathf.Abs(starHAngle) <= maxAngle;
+                    starHorizontalPin.gameObject.SetActive(vis);
+                    if (vis)
+                    {
+                        starHorizontalPin.anchoredPosition = Vector2.zero;
+                        starHorizontalPin.localRotation = Quaternion.Euler(0f, 0f, -starHAngle);
+                        var img = starHorizontalPin.GetComponent<Image>();
+                        if (img != null) img.color = Color.yellow;
+                    }
+                }
+                if (starVerticalPin != null)
+                {
+                    bool vis = Mathf.Abs(starVAngle) <= maxAngle;
+                    starVerticalPin.gameObject.SetActive(vis);
+                    if (vis)
+                    {
+                        starVerticalPin.anchoredPosition = Vector2.zero;
+                        starVerticalPin.localRotation = Quaternion.Euler(0f, 0f, starVAngle);
+                        var img = starVerticalPin.GetComponent<Image>();
+                        if (img != null) img.color = Color.yellow;
+                    }
+                }
+            }
+        }
+        else
+        {
+            if (starHorizontalPin != null) starHorizontalPin.gameObject.SetActive(false);
+            if (starVerticalPin != null) starVerticalPin.gameObject.SetActive(false);
+        }
+
+        // Label: show nearest target (non-star preferred, or star)
         if (targetLabel != null)
         {
             if (_pins.Count > 0 && _pins[0].target != null)
@@ -145,6 +202,12 @@ public class CompassHUD3D : MonoBehaviour
                 float dist = Vector3.Distance(ship.transform.position, _pins[0].target.position);
                 targetLabel.text = name + "  " + Mathf.RoundToInt(dist) + "m";
             }
+            else if (_nearestStar != null)
+            {
+                targetLabel.gameObject.SetActive(true);
+                float dist = Vector3.Distance(ship.transform.position, _nearestStar.position);
+                targetLabel.text = "Star  " + Mathf.RoundToInt(dist) + "m";
+            }
             else
             {
                 targetLabel.gameObject.SetActive(false);
@@ -154,7 +217,6 @@ public class CompassHUD3D : MonoBehaviour
 
     private void SyncPins(List<Transform> targets)
     {
-        // Remove pins for targets no longer in list
         for (int i = _pins.Count - 1; i >= 0; i--)
         {
             if (_pins[i].target == null || !targets.Contains(_pins[i].target))
@@ -165,7 +227,6 @@ public class CompassHUD3D : MonoBehaviour
             }
         }
 
-        // Create pins for new targets
         foreach (var t in targets)
         {
             bool exists = false;
@@ -175,7 +236,6 @@ public class CompassHUD3D : MonoBehaviour
             }
             if (exists) continue;
 
-            // Create horizontal pin from template
             RectTransform hPin = null;
             if (horizontalPin != null)
             {
@@ -184,7 +244,6 @@ public class CompassHUD3D : MonoBehaviour
                 hPin = hGO.GetComponent<RectTransform>();
             }
 
-            // Create vertical pin from template
             RectTransform vPin = null;
             if (verticalPin != null)
             {
