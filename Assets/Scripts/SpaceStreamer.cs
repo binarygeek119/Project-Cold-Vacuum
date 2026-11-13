@@ -111,9 +111,15 @@ public class SpaceStreamer : MonoBehaviour
 
     void Update()
     {
+        if (target == null)
+        {
+            var ship = GameObject.Find("Player Ship");
+            if (ship != null) target = ship.transform;
+            else if (Camera.main != null) target = Camera.main.transform;
+        }
         if (target == null) return;
 
-        // Keep starfield dome centered on the ship
+        // Keep skybox dome centered on the ship
         if (dome != null) dome.position = target.position;
 
         Vector3Int center = WorldToChunk(target.position);
@@ -197,26 +203,52 @@ public class SpaceStreamer : MonoBehaviour
             starParent.transform.position = sys.center;
             float starScale = Random.Range(40f, 80f);
 
-            // Far representation: point light + small twinkling sprite
+            // Far representation: bright point light + large glowing billboard + twinkle
             var farGO = new GameObject("Star Far");
             farGO.transform.SetParent(starParent.transform, false);
             var light = farGO.AddComponent<Light>();
             light.type = LightType.Point;
             light.color = new Color(1f, 0.95f, 0.8f);
-            light.intensity = 3f;
-            light.range = starScale * 3f;
+            light.intensity = 8f;
+            light.range = starScale * 8f;
+
+            // Large glowing billboard (always visible from far)
+            var billboard = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            billboard.name = "Star Glow";
+            billboard.transform.SetParent(farGO.transform, false);
+            billboard.transform.localScale = Vector3.one * starScale * 2f;
+            var bcol = billboard.GetComponent<Collider>();
+            if (bcol != null) UnityEngine.Object.Destroy(bcol);
+            var brend = billboard.GetComponent<Renderer>();
+            if (brend != null)
+            {
+                var sh = Shader.Find("Universal Render Pipeline/Particles/Unlit");
+                if (sh == null) sh = Shader.Find("Universal Render Pipeline/Unlit");
+                if (sh == null) sh = Shader.Find("Unlit/Color");
+                var mat = new Material(sh);
+                mat.color = new Color(1f, 0.95f, 0.8f, 0.6f);
+                if (mat.HasProperty("_SurfaceType")) mat.SetFloat("_SurfaceType", 1f);
+                if (mat.HasProperty("_BlendMode")) mat.SetFloat("_BlendMode", 2f);
+                if (mat.HasProperty("_ZWrite")) mat.SetFloat("_ZWrite", 0f);
+                if (mat.HasProperty("_Cull")) mat.SetFloat("_Cull", 0f);
+                brend.material = mat;
+                brend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            }
+            // billboard faces camera
+            billboard.AddComponent<BillboardToCamera>();
+
             // twinkle particle
             var twinkle = farGO.AddComponent<ParticleSystem>();
             var tmain = twinkle.main;
             tmain.startLifetime = 1f;
             tmain.startSpeed = 0f;
-            tmain.startSize = starScale * 0.3f;
+            tmain.startSize = starScale * 0.5f;
             tmain.startColor = new Color(1f, 0.95f, 0.8f, 1f);
             tmain.maxParticles = 1;
             tmain.loop = true;
             tmain.playOnAwake = true;
             var tem = twinkle.emission;
-            tem.rateOverTime = 1f;
+            tem.rateOverTime = 2f;
             var tshape = twinkle.shape;
             tshape.shapeType = ParticleSystemShapeType.Sphere;
             tshape.radius = 0.1f;
@@ -225,7 +257,7 @@ public class SpaceStreamer : MonoBehaviour
             var tgrad = new Gradient();
             tgrad.SetKeys(
                 new GradientColorKey[] { new GradientColorKey(new Color(1f,0.95f,0.8f), 0f) },
-                new GradientAlphaKey[] { new GradientAlphaKey(0.8f, 0f), new GradientAlphaKey(0.3f, 0.5f), new GradientAlphaKey(0.8f, 1f) });
+                new GradientAlphaKey[] { new GradientAlphaKey(0.6f, 0f), new GradientAlphaKey(0.2f, 0.5f), new GradientAlphaKey(0.6f, 1f) });
             tcol.color = tgrad;
 
             // Near representation: full star model
