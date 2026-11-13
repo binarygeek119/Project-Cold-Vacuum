@@ -12,8 +12,8 @@ public class CompassHUD3D : MonoBehaviour
 {
     public RawImage horizontalBar;
     public RawImage verticalBar;
-    public RectTransform horizontalPinTemplate;  // template (hidden) for spawning pins
-    public RectTransform verticalPinTemplate;
+    public RectTransform horizontalPin;  // template (hidden) for spawning pins
+    public RectTransform verticalPin;
     public Text targetLabel;
 
     public float maxAngle = 90f;
@@ -34,8 +34,8 @@ public class CompassHUD3D : MonoBehaviour
     {
         _streamer = FindFirstObjectByType<SpaceStreamer>();
         // Hide templates
-        if (horizontalPinTemplate != null) horizontalPinTemplate.gameObject.SetActive(false);
-        if (verticalPinTemplate != null) verticalPinTemplate.gameObject.SetActive(false);
+        if (horizontalPin != null) horizontalPin.gameObject.SetActive(false);
+        if (verticalPin != null) verticalPin.gameObject.SetActive(false);
     }
 
     void Update()
@@ -177,18 +177,18 @@ public class CompassHUD3D : MonoBehaviour
 
             // Create horizontal pin from template
             RectTransform hPin = null;
-            if (horizontalPinTemplate != null)
+            if (horizontalPin != null)
             {
-                var hGO = Instantiate(horizontalPinTemplate.gameObject, horizontalPinTemplate.parent);
+                var hGO = Instantiate(horizontalPin.gameObject, horizontalPin.parent);
                 hGO.SetActive(true);
                 hPin = hGO.GetComponent<RectTransform>();
             }
 
             // Create vertical pin from template
             RectTransform vPin = null;
-            if (verticalPinTemplate != null)
+            if (verticalPin != null)
             {
-                var vGO = Instantiate(verticalPinTemplate.gameObject, verticalPinTemplate.parent);
+                var vGO = Instantiate(verticalPin.gameObject, verticalPin.parent);
                 vGO.SetActive(true);
                 vPin = vGO.GetComponent<RectTransform>();
             }

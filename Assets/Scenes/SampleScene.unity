@@ -186,8 +186,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CompassHUD3D
   horizontalBar: {fileID: 1197755793}
   verticalBar: {fileID: 391995263}
-  horizontalPinTemplate: {fileID: 0}
-  verticalPinTemplate: {fileID: 0}
+  horizontalPin: {fileID: 0}
+  verticalPin: {fileID: 0}
   targetLabel: {fileID: 1850921757}
   maxAngle: 90
   barWidth: 576
@@ -3806,7 +3806,7 @@ Rigidbody:
     m_Bits: 0
   m_ImplicitCom: 1
   m_ImplicitTensor: 1
-  m_UseGravity: 1
+  m_UseGravity: 0
   m_IsKinematic: 0
   m_Interpolate: 0
   m_Constraints: 0
