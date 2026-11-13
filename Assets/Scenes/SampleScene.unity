@@ -5353,6 +5353,7 @@ MonoBehaviour:
   maxPieces: 4
   compositeRadius: 0.9
   nebulaChance: 0.4
+  planetChance: 0.06
   nebulaMinScale: 18
   nebulaMaxScale: 40
   nebulaMaterial: {fileID: 2100000, guid: 3672851f051c80180ad79f4cb905f141, type: 2}

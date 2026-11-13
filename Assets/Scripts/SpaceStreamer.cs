@@ -29,6 +29,7 @@ public class SpaceStreamer : MonoBehaviour
 
     [Header("Nebula clouds")]
     public float nebulaChance = 0.35f;          // probability per chunk
+    public float planetChance = 0.06f;           // probability per chunk (gas giants)
     public float nebulaMinScale = 18f;
     public float nebulaMaxScale = 40f;
     public Material nebulaMaterial;
@@ -167,6 +168,20 @@ public class SpaceStreamer : MonoBehaviour
             neb.transform.localScale = Vector3.one * ns;
             chunk.instances.Add(neb);
         }
+
+        // Gas giant planet (rare)
+        if (rng.NextDouble() < planetChance)
+        {
+            var planet = BuildPlanet(rng);
+            Vector3 plocal = new Vector3(
+                (float)rng.NextDouble() * chunkSize,
+                (float)rng.NextDouble() * chunkSize,
+                (float)rng.NextDouble() * chunkSize);
+            planet.transform.position = origin + plocal;
+            float pscale = 6f + (float)rng.NextDouble() * 10f;
+            planet.transform.localScale = Vector3.one * pscale;
+            chunk.instances.Add(planet);
+        }
     }
 
     private void UnloadChunk(Vector3Int coord)
@@ -300,6 +315,19 @@ public class SpaceStreamer : MonoBehaviour
         }
 
         return parent;
+    }
+
+    private GameObject BuildPlanet(System.Random rng)
+    {
+        var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        // remove default collider, add sphere collider
+        var col = go.GetComponent<Collider>();
+        if (col != null) UnityEngine.Object.Destroy(col);
+        var sc = go.AddComponent<SphereCollider>();
+        sc.radius = 0.5f;
+
+        go.AddComponent<GasGiant>();
+        return go;
     }
 
     private GameObject GetAsteroid()
