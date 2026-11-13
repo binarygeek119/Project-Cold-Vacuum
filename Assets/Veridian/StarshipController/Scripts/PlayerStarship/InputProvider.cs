@@ -108,6 +108,7 @@ namespace Veridian.Starship.Player
                 return;
             }
             Instance = this;
+            if (keyBindings == null) keyBindings = new KeyBindings();
             DefineActionsFromInspector();
         }
 
