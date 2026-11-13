@@ -131,6 +131,7 @@ public class SpaceStreamer : MonoBehaviour
 
     void Update()
     {
+        Debug.Log("SpaceStreamer.Update called, target=" + (target != null ? target.position.ToString() : "null"));
         if (target == null)
         {
             var ship = GameObject.Find("Player Ship");
@@ -198,8 +199,10 @@ public class SpaceStreamer : MonoBehaviour
 
     private void LoadChunk(Vector3Int coord)
     {
+        Debug.Log("LoadChunk called: " + coord + " chunks before: " + chunks.Count);
         var chunk = new Chunk { coord = coord };
         chunks[coord] = chunk;
+        Debug.Log("LoadChunk after add: " + chunks.Count);
 
         Vector3 origin = new Vector3(coord.x, coord.y, coord.z) * chunkSize;
         Vector3 chunkCenter = origin + new Vector3(chunkSize * 0.5f, chunkSize * 0.5f, chunkSize * 0.5f);
@@ -470,6 +473,7 @@ public class SpaceStreamer : MonoBehaviour
 
     private void UnloadChunk(Vector3Int coord)
     {
+        Debug.Log("UnloadChunk called: " + coord + " chunks before: " + chunks.Count);
         if (!chunks.TryGetValue(coord, out var chunk)) return;
         foreach (var go in chunk.instances)
         {

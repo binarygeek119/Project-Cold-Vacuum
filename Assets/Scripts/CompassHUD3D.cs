@@ -73,6 +73,18 @@ public class CompassHUD3D : MonoBehaviour
         // Sync pins: create new, remove stale
         SyncPins(targets);
 
+        // If no targets (blank space), hide all pins and label
+        if (targets.Count == 0)
+        {
+            foreach (var entry in _pins)
+            {
+                if (entry.hPin != null) entry.hPin.gameObject.SetActive(false);
+                if (entry.vPin != null) entry.vPin.gameObject.SetActive(false);
+            }
+            if (targetLabel != null) targetLabel.gameObject.SetActive(false);
+            return;
+        }
+
         // Update each pin
         Vector3 forward = ship.transform.forward;
         forward.y = 0f;
