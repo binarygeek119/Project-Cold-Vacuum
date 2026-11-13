@@ -315,7 +315,7 @@ public class SpaceStreamer : MonoBehaviour
             var lod = starParent.AddComponent<StarLOD>();
             lod.farRepresentation = farGO;
             lod.nearRepresentation = nearGO;
-            lod.lodDistance = 120f;
+            lod.lodDistance = 400f;
 
             // scale the parent (visual only, children already scaled)
             starParent.transform.localScale = Vector3.one;

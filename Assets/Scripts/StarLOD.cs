@@ -8,7 +8,7 @@ public class StarLOD : MonoBehaviour
 {
     public GameObject farRepresentation;   // simple light + twinkle
     public GameObject nearRepresentation;   // full star model
-    public float lodDistance = 120f;        // distance at which to switch to near
+    public float lodDistance = 400f;        // distance at which to switch to near
 
     private Transform _cam;
 

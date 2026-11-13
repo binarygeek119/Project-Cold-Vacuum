@@ -10,7 +10,7 @@ public class StarField : MonoBehaviour
     public int starCount = 150;
     public float minDistance = 200f;
     public float maxDistance = 1500f;
-    public float lodDistance = 120f;
+    public float lodDistance = 400f;
     public GameObject starNearPrefab; // full star model (optional)
 
     private Transform _target;
