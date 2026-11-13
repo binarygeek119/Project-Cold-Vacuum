@@ -77,11 +77,11 @@ public class SpaceStreamer : MonoBehaviour
     {
         systems.Clear();
         int count = Random.Range(minSystems, maxSystems + 1);
-        float z = 0f;
+        float z = 1000f; // start far away
         for (int i = 0; i < count; i++)
         {
             // increasing gaps between systems for "blank space"
-            if (i > 0) z += Random.Range(400f, 700f);
+            if (i > 0) z += Random.Range(600f, 1000f);
             float radius = Random.Range(150f, 280f);
             var sys = new StarSystem
             {
