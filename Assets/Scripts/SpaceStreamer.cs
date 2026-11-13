@@ -27,6 +27,12 @@ public class SpaceStreamer : MonoBehaviour
     public int maxPieces = 4;
     public float compositeRadius = 0.8f;
 
+    [Header("Nebula clouds")]
+    public float nebulaChance = 0.35f;          // probability per chunk
+    public float nebulaMinScale = 18f;
+    public float nebulaMaxScale = 40f;
+    public Material nebulaMaterial;
+
     private readonly Dictionary<Vector3Int, Chunk> chunks = new Dictionary<Vector3Int, Chunk>();
     private readonly Queue<Vector3Int> loadQueue = new Queue<Vector3Int>();
     private readonly Queue<Vector3Int> unloadQueue = new Queue<Vector3Int>();
@@ -146,6 +152,21 @@ public class SpaceStreamer : MonoBehaviour
             go.transform.localScale = Vector3.one * sc;
             chunk.instances.Add(go);
         }
+
+        // Nebula cloud (random, colorful, glowing)
+        if (rng.NextDouble() < nebulaChance)
+        {
+            var neb = BuildNebula(rng);
+            Vector3 nlocal = new Vector3(
+                (float)rng.NextDouble() * chunkSize,
+                (float)rng.NextDouble() * chunkSize,
+                (float)rng.NextDouble() * chunkSize);
+            neb.transform.position = origin + nlocal;
+            neb.transform.rotation = Quaternion.Euler(0f, (float)rng.NextDouble() * 360f, 0f);
+            float ns = nebulaMinScale + (float)rng.NextDouble() * (nebulaMaxScale - nebulaMinScale);
+            neb.transform.localScale = Vector3.one * ns;
+            chunk.instances.Add(neb);
+        }
     }
 
     private void UnloadChunk(Vector3Int coord)
@@ -213,6 +234,49 @@ public class SpaceStreamer : MonoBehaviour
         parentCol.radius = compositeRadius * 1.2f;
 
         return parent;
+    }
+
+    private GameObject BuildNebula(System.Random rng)
+    {
+        var go = GameObject.CreatePrimitive(PrimitiveType.Quad);
+        // remove collider
+        var col = go.GetComponent<Collider>();
+        if (col != null) UnityEngine.Object.Destroy(col);
+
+        var rend = go.GetComponent<MeshRenderer>();
+        if (rend != null)
+        {
+            Material mat = nebulaMaterial;
+            if (mat == null)
+            {
+                var sh = Shader.Find("Universal Render Pipeline/Particles/Unlit");
+                if (sh == null) sh = Shader.Find("Universal Render Pipeline/Unlit");
+                if (sh == null) sh = Shader.Find("Unlit/Color");
+                mat = new Material(sh);
+                if (mat.HasProperty("_Surface")) mat.SetFloat("_Surface", 1f);
+                if (mat.HasProperty("_Blend")) mat.SetFloat("_Blend", 2f);
+                if (mat.HasProperty("_Cull")) mat.SetFloat("_Cull", 0f);
+                if (mat.HasProperty("_ZWrite")) mat.SetFloat("_ZWrite", 0f);
+            }
+            // instance material with random bright color
+            var inst = new Material(mat);
+            Color[] palette = new Color[] {
+                new Color(1f, 0.3f, 0.6f),   // pink
+                new Color(0.4f, 0.6f, 1f),    // blue
+                new Color(0.6f, 0.3f, 1f),    // purple
+                new Color(0.3f, 1f, 0.8f),    // cyan
+                new Color(1f, 0.6f, 0.2f),    // orange
+                new Color(0.8f, 0.2f, 1f),    // violet
+            };
+            Color c = palette[rng.Next(palette.Length)];
+            c = Color.Lerp(c, Color.white, 0.3f); // lighten for glow
+            inst.color = c;
+            if (inst.HasProperty("_BaseColor")) inst.SetColor("_BaseColor", c);
+            rend.material = inst;
+        }
+
+        go.AddComponent<NebulaCloud>();
+        return go;
     }
 
     private GameObject GetAsteroid()

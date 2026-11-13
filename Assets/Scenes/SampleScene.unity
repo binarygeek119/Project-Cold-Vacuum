@@ -5352,6 +5352,10 @@ MonoBehaviour:
   minPieces: 2
   maxPieces: 4
   compositeRadius: 0.9
+  nebulaChance: 0.4
+  nebulaMinScale: 18
+  nebulaMaxScale: 40
+  nebulaMaterial: {fileID: 2100000, guid: 3672851f051c80180ad79f4cb905f141, type: 2}
 --- !u!4 &2035070394
 Transform:
   m_ObjectHideFlags: 0
