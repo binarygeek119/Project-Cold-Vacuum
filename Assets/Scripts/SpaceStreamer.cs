@@ -109,6 +109,26 @@ public class SpaceStreamer : MonoBehaviour
         return null;
     }
 
+    public Vector3 GetCurrentSystemCenter()
+    {
+        if (target == null) return Vector3.zero;
+        var sys = GetSystem(target.position);
+        return sys != null ? sys.center : Vector3.zero;
+    }
+
+    public float GetCurrentSystemRadius()
+    {
+        if (target == null) return 0f;
+        var sys = GetSystem(target.position);
+        return sys != null ? sys.radius : 0f;
+    }
+
+    public bool IsInStarSystem()
+    {
+        if (target == null) return false;
+        return GetSystem(target.position) != null;
+    }
+
     void Update()
     {
         if (target == null)
@@ -295,6 +315,9 @@ public class SpaceStreamer : MonoBehaviour
 
             // scale the parent (visual only, children already scaled)
             starParent.transform.localScale = Vector3.one;
+            var starCT = starParent.AddComponent<CompassTarget>();
+            starCT.displayColor = new Color(1f, 0.9f, 0.3f);
+            starCT.displayName = "Star";
 
             chunk.instances.Add(starParent);
         }
@@ -327,6 +350,9 @@ public class SpaceStreamer : MonoBehaviour
             planet.transform.position = pos;
             float pScale = Random.Range(50f, 120f);
             planet.transform.localScale = Vector3.one * pScale;
+            var pCT = planet.AddComponent<CompassTarget>();
+            pCT.displayColor = new Color(0.3f, 0.6f, 1f);
+            pCT.displayName = "Planet";
             // orbit the star (system center)
             var gg = planet.GetComponent<GasGiant>();
             if (gg != null)
@@ -374,6 +400,9 @@ public class SpaceStreamer : MonoBehaviour
             ast.transform.position = apos;
             float ascale = Random.Range(1f, 3f);
             ast.transform.localScale = Vector3.one * ascale;
+            var aCT = ast.AddComponent<CompassTarget>();
+            aCT.displayColor = new Color(0.6f, 0.6f, 0.6f);
+            aCT.displayName = "Asteroid";
             chunk.instances.Add(ast);
         }
 
@@ -389,6 +418,9 @@ public class SpaceStreamer : MonoBehaviour
                 var st = (GameObject)Instantiate(stationPrefab);
                 st.transform.position = stPos;
                 st.transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+                var stCT = st.AddComponent<CompassTarget>();
+                stCT.displayColor = Color.white;
+                stCT.displayName = "Station";
                 chunk.instances.Add(st);
             }
         }
@@ -405,6 +437,9 @@ public class SpaceStreamer : MonoBehaviour
                 ev.transform.position = ePos;
                 ev.transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
                 if (ev.GetComponent<EnemyShip>() == null) ev.AddComponent<EnemyShip>();
+                var evCT = ev.AddComponent<CompassTarget>();
+                evCT.displayColor = new Color(1f, 0.3f, 0.3f);
+                evCT.displayName = "Enemy";
                 chunk.instances.Add(ev);
             }
         }
@@ -421,6 +456,9 @@ public class SpaceStreamer : MonoBehaviour
                 neb.transform.position = nPos;
                 float ns = nebulaMinScale + (float)rng.NextDouble() * (nebulaMaxScale - nebulaMinScale);
                 neb.transform.localScale = Vector3.one * ns;
+                var nCT = neb.AddComponent<CompassTarget>();
+                nCT.displayColor = new Color(0.7f, 0.3f, 1f);
+                nCT.displayName = "Nebula";
                 chunk.instances.Add(neb);
             }
             else
