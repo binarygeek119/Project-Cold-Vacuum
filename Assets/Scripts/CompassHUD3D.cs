@@ -1,154 +1,187 @@
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections.Generic;
 
 /// <summary>
 /// 3D compass (Skyrim-style) with horizontal bar (top) and vertical bar (left).
-/// Bars stay fixed in place; pins rotate like gauge needles to point at the
-/// nearest target in the current star system. Bars and pins are separate images.
+/// Bars are fixed in place; pins rotate like gauge needles to point at targets.
+/// Supports MULTIPLE pins (one per target in the current star system).
+/// Each pin is colored to match its target object.
 /// </summary>
 public class CompassHUD3D : MonoBehaviour
 {
     public RawImage horizontalBar;
     public RawImage verticalBar;
-    public RectTransform horizontalPin;
-    public RectTransform verticalPin;
+    public RectTransform horizontalPinTemplate;  // template (hidden) for spawning pins
+    public RectTransform verticalPinTemplate;
     public Text targetLabel;
 
     public float maxAngle = 90f;
     public float barWidth = 400f;
     public float barHeight = 400f;
 
-    private Transform _target;
     private SpaceStreamer _streamer;
+    private List<PinEntry> _pins = new List<PinEntry>();
+
+    private class PinEntry
+    {
+        public Transform target;
+        public RectTransform hPin;
+        public RectTransform vPin;
+    }
 
     void Start()
     {
         _streamer = FindFirstObjectByType<SpaceStreamer>();
+        // Hide templates
+        if (horizontalPinTemplate != null) horizontalPinTemplate.gameObject.SetActive(false);
+        if (verticalPinTemplate != null) verticalPinTemplate.gameObject.SetActive(false);
     }
 
     void Update()
     {
         if (horizontalBar == null || verticalBar == null) return;
 
-        FindNearestTarget();
-
         var ship = GameObject.Find("Player Ship");
         if (ship == null) return;
 
-        if (_target == null)
+        // Get current system
+        Vector3 systemCenter = Vector3.zero;
+        float systemRadius = 0f;
+        bool inSystem = false;
+        if (_streamer != null)
         {
-            if (horizontalPin != null) horizontalPin.gameObject.SetActive(false);
-            if (verticalPin != null) verticalPin.gameObject.SetActive(false);
-            if (targetLabel != null) targetLabel.gameObject.SetActive(false);
-            return;
+            systemCenter = _streamer.GetCurrentSystemCenter();
+            systemRadius = _streamer.GetCurrentSystemRadius();
+            inSystem = _streamer.IsInStarSystem();
         }
 
-        if (horizontalPin != null) horizontalPin.gameObject.SetActive(true);
-        if (verticalPin != null) verticalPin.gameObject.SetActive(true);
-        if (targetLabel != null) targetLabel.gameObject.SetActive(true);
+        // Find all targets in current system
+        var targets = new List<Transform>();
+        if (inSystem)
+        {
+            var allTargets = FindObjectsByType<CompassTarget>(FindObjectsSortMode.None);
+            foreach (var ct in allTargets)
+            {
+                if (ct == null) continue;
+                float distToSystem = Vector3.Distance(ct.transform.position, systemCenter);
+                if (systemRadius > 0f && distToSystem > systemRadius) continue;
+                targets.Add(ct.transform);
+            }
+        }
 
-        Vector3 toTarget = _target.position - ship.transform.position;
-        if (toTarget.sqrMagnitude < 0.01f) return;
-        Vector3 dir = toTarget.normalized;
+        // Sync pins: create new, remove stale
+        SyncPins(targets);
 
-        // Horizontal angle (yaw bearing)
+        // Update each pin
         Vector3 forward = ship.transform.forward;
         forward.y = 0f;
         if (forward.sqrMagnitude < 0.01f) forward = Vector3.forward;
         forward.Normalize();
-        Vector3 horizDir = new Vector3(dir.x, 0f, dir.z);
-        if (horizDir.sqrMagnitude > 0.001f) horizDir.Normalize();
-        float hAngle = Vector3.SignedAngle(forward, horizDir, Vector3.up);
 
-        // Vertical angle (pitch bearing)
-        float vAngle = Mathf.Asin(Mathf.Clamp(dir.y, -1f, 1f)) * Mathf.Rad2Deg;
-
-        // Rotate horizontal pin like a gauge needle (stays in place, rotates)
-        if (horizontalPin != null)
+        foreach (var entry in _pins)
         {
-            if (Mathf.Abs(hAngle) > maxAngle)
-                horizontalPin.gameObject.SetActive(false);
-            else
+            if (entry.target == null || entry.hPin == null || entry.vPin == null) continue;
+
+            Vector3 toTarget = entry.target.position - ship.transform.position;
+            if (toTarget.sqrMagnitude < 0.01f) continue;
+            Vector3 dir = toTarget.normalized;
+
+            // Horizontal angle
+            Vector3 horizDir = new Vector3(dir.x, 0f, dir.z);
+            if (horizDir.sqrMagnitude > 0.001f) horizDir.Normalize();
+            float hAngle = Vector3.SignedAngle(forward, horizDir, Vector3.up);
+
+            // Vertical angle
+            float vAngle = Mathf.Asin(Mathf.Clamp(dir.y, -1f, 1f)) * Mathf.Rad2Deg;
+
+            // Horizontal pin: rotate like gauge needle
+            bool hVisible = Mathf.Abs(hAngle) <= maxAngle;
+            entry.hPin.gameObject.SetActive(hVisible);
+            if (hVisible)
             {
-                horizontalPin.gameObject.SetActive(true);
-                // Pin stays at center; rotates to point at target
-                horizontalPin.anchoredPosition = Vector2.zero;
-                horizontalPin.localRotation = Quaternion.Euler(0f, 0f, -hAngle);
+                entry.hPin.anchoredPosition = Vector2.zero;
+                entry.hPin.localRotation = Quaternion.Euler(0f, 0f, -hAngle);
             }
-        }
 
-        // Rotate vertical pin like a gauge needle
-        if (verticalPin != null)
-        {
-            if (Mathf.Abs(vAngle) > maxAngle)
-                verticalPin.gameObject.SetActive(false);
-            else
+            // Vertical pin
+            bool vVisible = Mathf.Abs(vAngle) <= maxAngle;
+            entry.vPin.gameObject.SetActive(vVisible);
+            if (vVisible)
             {
-                verticalPin.gameObject.SetActive(true);
-                verticalPin.anchoredPosition = Vector2.zero;
-                verticalPin.localRotation = Quaternion.Euler(0f, 0f, vAngle);
+                entry.vPin.anchoredPosition = Vector2.zero;
+                entry.vPin.localRotation = Quaternion.Euler(0f, 0f, vAngle);
             }
+
+            // Color
+            var ct = entry.target.GetComponent<CompassTarget>();
+            Color pinColor = ct != null ? ct.displayColor : Color.white;
+            var hImg = entry.hPin.GetComponent<Image>();
+            if (hImg != null) hImg.color = pinColor;
+            var vImg = entry.vPin.GetComponent<Image>();
+            if (vImg != null) vImg.color = pinColor;
         }
 
-        // Tint pins with target color
-        var ct = _target.GetComponent<CompassTarget>();
-        Color pinColor = ct != null ? ct.displayColor : Color.white;
-        if (horizontalPin != null)
-        {
-            var img = horizontalPin.GetComponent<Image>();
-            if (img != null) img.color = pinColor;
-        }
-        if (verticalPin != null)
-        {
-            var img = verticalPin.GetComponent<Image>();
-            if (img != null) img.color = pinColor;
-        }
-
-        // Label
+        // Label: show nearest target
         if (targetLabel != null)
         {
-            float dist = toTarget.magnitude;
-            string name = ct != null && !string.IsNullOrEmpty(ct.displayName) ? ct.displayName : _target.name;
-            targetLabel.text = name + "  " + Mathf.RoundToInt(dist) + "m";
+            if (_pins.Count > 0 && _pins[0].target != null)
+            {
+                targetLabel.gameObject.SetActive(true);
+                var ct = _pins[0].target.GetComponent<CompassTarget>();
+                string name = ct != null && !string.IsNullOrEmpty(ct.displayName) ? ct.displayName : _pins[0].target.name;
+                float dist = Vector3.Distance(ship.transform.position, _pins[0].target.position);
+                targetLabel.text = name + "  " + Mathf.RoundToInt(dist) + "m";
+            }
+            else
+            {
+                targetLabel.gameObject.SetActive(false);
+            }
         }
     }
 
-    private void FindNearestTarget()
+    private void SyncPins(List<Transform> targets)
     {
-        _target = null;
-        float minDist = float.MaxValue;
-
-        var ship = GameObject.Find("Player Ship");
-        if (ship == null) return;
-
-        // Check if in star system
-        if (_streamer != null && !_streamer.IsInStarSystem())
+        // Remove pins for targets no longer in list
+        for (int i = _pins.Count - 1; i >= 0; i--)
         {
-            return;
+            if (_pins[i].target == null || !targets.Contains(_pins[i].target))
+            {
+                if (_pins[i].hPin != null) Destroy(_pins[i].hPin.gameObject);
+                if (_pins[i].vPin != null) Destroy(_pins[i].vPin.gameObject);
+                _pins.RemoveAt(i);
+            }
         }
 
-        Vector3 systemCenter = _streamer != null ? _streamer.GetCurrentSystemCenter() : Vector3.zero;
-        float systemRadius = _streamer != null ? _streamer.GetCurrentSystemRadius() : 0f;
-
-        var allTransforms = FindObjectsByType<Transform>(FindObjectsSortMode.None);
-        foreach (var tr in allTransforms)
+        // Create pins for new targets
+        foreach (var t in targets)
         {
-            var go = tr.gameObject;
-            if (go == ship) continue;
-            bool isTarget = false;
-            if (go.GetComponent<CompassTarget>() != null) isTarget = true;
-            if (go.name.Contains("Star") || go.name.Contains("Planet") || go.name.Contains("Station")) isTarget = true;
-            if (!isTarget) continue;
-
-            // Filter by current system
-            if (systemRadius > 0f)
+            bool exists = false;
+            foreach (var entry in _pins)
             {
-                float distToSystem = Vector3.Distance(go.transform.position, systemCenter);
-                if (distToSystem > systemRadius) continue;
+                if (entry.target == t) { exists = true; break; }
+            }
+            if (exists) continue;
+
+            // Create horizontal pin from template
+            RectTransform hPin = null;
+            if (horizontalPinTemplate != null)
+            {
+                var hGO = Instantiate(horizontalPinTemplate.gameObject, horizontalPinTemplate.parent);
+                hGO.SetActive(true);
+                hPin = hGO.GetComponent<RectTransform>();
             }
 
-            float d = Vector3.Distance(ship.transform.position, go.transform.position);
-            if (d < minDist) { minDist = d; _target = go.transform; }
+            // Create vertical pin from template
+            RectTransform vPin = null;
+            if (verticalPinTemplate != null)
+            {
+                var vGO = Instantiate(verticalPinTemplate.gameObject, verticalPinTemplate.parent);
+                vGO.SetActive(true);
+                vPin = vGO.GetComponent<RectTransform>();
+            }
+
+            _pins.Add(new PinEntry { target = t, hPin = hPin, vPin = vPin });
         }
     }
 }
