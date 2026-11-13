@@ -373,7 +373,10 @@ public class SpaceStreamer : MonoBehaviour
         // Asteroids
         for (int i = 0; i < sys.asteroidCount; i++)
         {
-            Vector3 aoffset = Random.insideUnitSphere * (sys.radius * 0.8f);
+            float arx = (float)(rng.NextDouble() * 2 - 1);
+            float ary = (float)(rng.NextDouble() * 2 - 1);
+            float arz = (float)(rng.NextDouble() * 2 - 1);
+            Vector3 aoffset = new Vector3(arx, ary, arz).normalized * (float)(rng.NextDouble() * sys.radius * 0.8);
             aoffset.y *= 0.4f;
             Vector3 apos = sys.center + aoffset;
             if (WorldToChunk(apos) != coord) continue;
@@ -405,7 +408,7 @@ public class SpaceStreamer : MonoBehaviour
                 ast.AddComponent<AsteroidMotion>();
             }
             ast.transform.position = apos;
-            float ascale = Random.Range(1f, 3f);
+            float ascale = 1f + (float)rng.NextDouble() * 2f;
             ast.transform.localScale = Vector3.one * ascale;
             var aCT = ast.AddComponent<CompassTarget>();
             aCT.displayColor = new Color(0.6f, 0.6f, 0.6f);
@@ -413,18 +416,24 @@ public class SpaceStreamer : MonoBehaviour
             chunk.instances.Add(ast);
         }
 
-        // Station (rare, per system)
+        // Station (rare, per system) - spawn in system center chunk only
         if (sys.hasStation && stationPrefab != null)
         {
-            // place station near system edge
-            Vector3 stOffset = Random.insideUnitSphere * (sys.radius * 0.5f);
-            stOffset.y *= 0.2f;
-            Vector3 stPos = sys.center + stOffset;
-            if (WorldToChunk(stPos) == coord)
+            Vector3Int sysChunk = WorldToChunk(sys.center);
+            if (coord == sysChunk)
             {
+                // Use system-seeded RNG for deterministic station position
+                var stationRng = new System.Random(sys.center.GetHashCode() ^ "station".GetHashCode());
+                float srx = (float)(stationRng.NextDouble() * 2 - 1);
+                float sry = (float)(stationRng.NextDouble() * 2 - 1);
+                float srz = (float)(stationRng.NextDouble() * 2 - 1);
+                Vector3 stOffset = new Vector3(srx, sry, srz).normalized * (float)(stationRng.NextDouble() * sys.radius * 0.5);
+                stOffset.y *= 0.2f;
+                Vector3 stPos = sys.center + stOffset;
+                
                 var st = (GameObject)Instantiate(stationPrefab);
                 st.transform.position = stPos;
-                st.transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+                st.transform.rotation = Quaternion.Euler(0f, (float)stationRng.NextDouble() * 360f, 0f);
                 var stCT = st.AddComponent<CompassTarget>();
                 stCT.displayColor = Color.white;
                 stCT.displayName = "Station";
@@ -432,17 +441,24 @@ public class SpaceStreamer : MonoBehaviour
             }
         }
 
-        // Enemy Viper (per system)
+        // Enemy Viper (per system) - spawn in system center chunk only
         if (sys.hasEnemy && enemyShipPrefab != null)
         {
-            Vector3 eOffset = Random.insideUnitSphere * (sys.radius * 0.7f);
-            eOffset.y *= 0.3f;
-            Vector3 ePos = sys.center + eOffset;
-            if (WorldToChunk(ePos) == coord)
+            Vector3Int sysChunk = WorldToChunk(sys.center);
+            if (coord == sysChunk)
             {
+                // Use system-seeded RNG for deterministic enemy position
+                var enemyRng = new System.Random(sys.center.GetHashCode() ^ "enemy".GetHashCode());
+                float erx = (float)(enemyRng.NextDouble() * 2 - 1);
+                float ery = (float)(enemyRng.NextDouble() * 2 - 1);
+                float erz = (float)(enemyRng.NextDouble() * 2 - 1);
+                Vector3 eOffset = new Vector3(erx, ery, erz).normalized * (float)(enemyRng.NextDouble() * sys.radius * 0.7);
+                eOffset.y *= 0.3f;
+                Vector3 ePos = sys.center + eOffset;
+                
                 var ev = (GameObject)Instantiate(enemyShipPrefab);
                 ev.transform.position = ePos;
-                ev.transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+                ev.transform.rotation = Quaternion.Euler(0f, (float)enemyRng.NextDouble() * 360f, 0f);
                 if (ev.GetComponent<EnemyShip>() == null) ev.AddComponent<EnemyShip>();
                 var evCT = ev.AddComponent<CompassTarget>();
                 evCT.displayColor = new Color(1f, 0.3f, 0.3f);
@@ -451,26 +467,29 @@ public class SpaceStreamer : MonoBehaviour
             }
         }
 
-        // Nebula cloud (only in systems with nebula, and rare)
+        // Nebula cloud (only in systems with nebula, and rare) - spawn in system center chunk only
         if (sys.hasNebula && rng.NextDouble() < 0.3f)
         {
-            var neb = BuildNebula(rng);
-            Vector3 nOffset = Random.insideUnitSphere * (sys.radius * 0.6f);
-            nOffset.y *= 0.2f;
-            Vector3 nPos = sys.center + nOffset;
-            if (WorldToChunk(nPos) == coord)
+            Vector3Int sysChunk = WorldToChunk(sys.center);
+            if (coord == sysChunk)
             {
+                var neb = BuildNebula(rng);
+                // Use system-seeded RNG for deterministic nebula position
+                var nebulaRng = new System.Random(sys.center.GetHashCode() ^ "nebula".GetHashCode());
+                float nrx = (float)(nebulaRng.NextDouble() * 2 - 1);
+                float nry = (float)(nebulaRng.NextDouble() * 2 - 1);
+                float nrz = (float)(nebulaRng.NextDouble() * 2 - 1);
+                Vector3 nOffset = new Vector3(nrx, nry, nrz).normalized * (float)(nebulaRng.NextDouble() * sys.radius * 0.6);
+                nOffset.y *= 0.2f;
+                Vector3 nPos = sys.center + nOffset;
+                
                 neb.transform.position = nPos;
-                float ns = nebulaMinScale + (float)rng.NextDouble() * (nebulaMaxScale - nebulaMinScale);
+                float ns = nebulaMinScale + (float)nebulaRng.NextDouble() * (nebulaMaxScale - nebulaMinScale);
                 neb.transform.localScale = Vector3.one * ns;
                 var nCT = neb.AddComponent<CompassTarget>();
                 nCT.displayColor = new Color(0.7f, 0.3f, 1f);
                 nCT.displayName = "Nebula";
                 chunk.instances.Add(neb);
-            }
-            else
-            {
-                UnityEngine.Object.Destroy(neb);
             }
         }
     }
