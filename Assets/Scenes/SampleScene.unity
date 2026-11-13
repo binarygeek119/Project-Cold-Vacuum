@@ -757,23 +757,27 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 3084536491331228052, guid: d4f9921d5196ee9459827a8b13bf231b, type: 3}
       propertyPath: maxSpeed
-      value: 50
+      value: 30
       objectReference: {fileID: 0}
     - target: {fileID: 3084536491331228052, guid: d4f9921d5196ee9459827a8b13bf231b, type: 3}
       propertyPath: useGravity
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3084536491331228052, guid: d4f9921d5196ee9459827a8b13bf231b, type: 3}
+      propertyPath: useProfile
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3084536491331228052, guid: d4f9921d5196ee9459827a8b13bf231b, type: 3}
       propertyPath: forwardThrustPower
-      value: 30000
+      value: 5000
       objectReference: {fileID: 0}
     - target: {fileID: 3084536491331228052, guid: d4f9921d5196ee9459827a8b13bf231b, type: 3}
       propertyPath: reverseThrustPower
-      value: 15000
+      value: 2500
       objectReference: {fileID: 0}
     - target: {fileID: 3084536491331228052, guid: d4f9921d5196ee9459827a8b13bf231b, type: 3}
       propertyPath: verticalThrustPower
-      value: 15000
+      value: 2500
       objectReference: {fileID: 0}
     - target: {fileID: 3084536491331228052, guid: d4f9921d5196ee9459827a8b13bf231b, type: 3}
       propertyPath: lerpCruisingAltitude
