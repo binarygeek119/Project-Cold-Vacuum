@@ -155,8 +155,7 @@ public class SpaceStreamer : MonoBehaviour
         {
             if (go != null)
             {
-                go.SetActive(false);
-                pool.Enqueue(go);
+                UnityEngine.Object.Destroy(go);
             }
         }
         chunk.instances.Clear();
@@ -201,6 +200,14 @@ public class SpaceStreamer : MonoBehaviour
             }
         }
 
+        // physics: rigidbody so impacts move it + orbit/spin motion
+        var prb = parent.AddComponent<Rigidbody>();
+        prb.useGravity = false;
+        prb.linearDamping = 1f;
+        prb.angularDamping = 0.5f;
+        prb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+        parent.AddComponent<AsteroidMotion>();
+
         // add a compound sphere collider on parent for physics (approx)
         var parentCol = parent.AddComponent<SphereCollider>();
         parentCol.radius = compositeRadius * 1.2f;
@@ -219,11 +226,18 @@ public class SpaceStreamer : MonoBehaviour
         if (asteroidPrefab != null)
         {
             go = Instantiate(asteroidPrefab);
-            // ensure at least one collider for physics (add sphere if missing)
             if (go.GetComponentInChildren<Collider>() == null)
             {
                 var sc = go.AddComponent<SphereCollider>();
                 sc.radius = 0.5f;
+            }
+            if (go.GetComponent<Rigidbody>() == null)
+            {
+                var prb = go.AddComponent<Rigidbody>();
+                prb.useGravity = false;
+                prb.linearDamping = 1f;
+                prb.angularDamping = 0.5f;
+                go.AddComponent<AsteroidMotion>();
             }
         }
         else
@@ -231,8 +245,12 @@ public class SpaceStreamer : MonoBehaviour
             go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             var rend = go.GetComponent<Renderer>();
             if (rend != null && asteroidMaterial != null) rend.sharedMaterial = asteroidMaterial;
-            // keep a sphere collider for physics
             if (go.GetComponent<Collider>() == null) go.AddComponent<SphereCollider>();
+            var prb = go.AddComponent<Rigidbody>();
+            prb.useGravity = false;
+            prb.linearDamping = 1f;
+            prb.angularDamping = 0.5f;
+            go.AddComponent<AsteroidMotion>();
         }
         return go;
     }
