@@ -196,7 +196,7 @@ public class SpaceStreamer : MonoBehaviour
             {
                 var star = (GameObject)Instantiate(starPrefab);
                 star.transform.position = sys.center;
-                star.transform.localScale = Vector3.one * Random.Range(8f, 20f);
+                star.transform.localScale = Vector3.one * Random.Range(40f, 80f);
                 chunk.instances.Add(star);
             }
         }

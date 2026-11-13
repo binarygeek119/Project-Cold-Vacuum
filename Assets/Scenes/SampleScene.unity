@@ -5445,15 +5445,15 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 408615012245282652, guid: 0bb8921464e4e9441a13f139944abfb4, type: 3}
       propertyPath: m_LocalScale.x
-      value: 5
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 408615012245282652, guid: 0bb8921464e4e9441a13f139944abfb4, type: 3}
       propertyPath: m_LocalScale.y
-      value: 5
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 408615012245282652, guid: 0bb8921464e4e9441a13f139944abfb4, type: 3}
       propertyPath: m_LocalScale.z
-      value: 5
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 408615012245282652, guid: 0bb8921464e4e9441a13f139944abfb4, type: 3}
       propertyPath: m_LocalPosition.x
@@ -5549,7 +5549,7 @@ MonoBehaviour:
   planetPrefab: {fileID: 2405992611431791994, guid: dfc7bb203ea2b6f44b57fbe13bef6392, type: 3}
   stationPrefab: {fileID: 6856288193131436260, guid: 627685f534af58644ab3f376f27a83fb, type: 3}
   enemyShipPrefab: {fileID: 520963555456066697, guid: 1c1e883b03539c94a90a13b0b6ffec59, type: 3}
-  starPrefab: {fileID: 0}
+  starPrefab: {fileID: 8963567189204150130, guid: 0bb8921464e4e9441a13f139944abfb4, type: 3}
   nebulaMaterial: {fileID: 2100000, guid: 364d4b8810e789cf0aff20fb332c21b1, type: 2}
   nebulaMinScale: 12
   nebulaMaxScale: 25
