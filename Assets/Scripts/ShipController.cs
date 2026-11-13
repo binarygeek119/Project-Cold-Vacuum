@@ -111,9 +111,18 @@ public class ShipController : MonoBehaviour
 
         // --- thrust ---
         if (thrust > triggerDeadzone)
+        {
             _rb.AddForce(transform.forward * thrust * thrustForce, ForceMode.Acceleration);
-        if (brake > triggerDeadzone && _rb.linearVelocity.sqrMagnitude > 0.01f)
+        }
+        else if (brake > triggerDeadzone && _rb.linearVelocity.sqrMagnitude > 0.01f)
+        {
             _rb.AddForce(-_rb.linearVelocity.normalized * brake * brakeForce, ForceMode.Acceleration);
+        }
+        else
+        {
+            // No thrust applied: stop (no coasting)
+            _rb.linearVelocity = Vector3.zero;
+        }
 
         // --- speed clamp ---
         if (_rb.linearVelocity.magnitude > maxSpeed)
