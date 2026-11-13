@@ -25,6 +25,13 @@ public class SpaceStreamer : MonoBehaviour
     public System.Collections.Generic.List<GameObject> asteroidPrefabs;
     public GameObject planetPrefab;
 
+    [Header("Starter Kit landmarks")]
+    public GameObject stationPrefab;
+    public GameObject starPrefab;
+    public GameObject enemyShipPrefab;
+    public float stationChance = 0.02f;
+    public float enemyChance = 0.04f;
+
     [Header("Composite asteroids")]
     public System.Collections.Generic.List<GameObject> asteroidModels;
     public int minPieces = 2;
@@ -191,6 +198,34 @@ public class SpaceStreamer : MonoBehaviour
             float pscale = 50f + (float)rng.NextDouble() * 70f;
             planet.transform.localScale = Vector3.one * pscale;
             chunk.instances.Add(planet);
+        }
+
+        // Station (rare landmark)
+        if (stationPrefab != null && rng.NextDouble() < stationChance)
+        {
+            var st = (GameObject)Instantiate(stationPrefab);
+            Vector3 slocal = new Vector3(
+                (float)rng.NextDouble() * chunkSize,
+                (float)rng.NextDouble() * chunkSize,
+                (float)rng.NextDouble() * chunkSize);
+            st.transform.position = origin + slocal;
+            st.transform.rotation = Quaternion.Euler(0f, (float)rng.NextDouble() * 360f, 0f);
+            chunk.instances.Add(st);
+        }
+
+        // Enemy Viper (rare)
+        if (enemyShipPrefab != null && rng.NextDouble() < enemyChance)
+        {
+            var ev = (GameObject)Instantiate(enemyShipPrefab);
+            Vector3 elocal = new Vector3(
+                (float)rng.NextDouble() * chunkSize,
+                (float)rng.NextDouble() * chunkSize,
+                (float)rng.NextDouble() * chunkSize);
+            ev.transform.position = origin + elocal;
+            ev.transform.rotation = Quaternion.Euler(0f, (float)rng.NextDouble() * 360f, 0f);
+            // add enemy AI if not present
+            if (ev.GetComponent<EnemyShip>() == null) ev.AddComponent<EnemyShip>();
+            chunk.instances.Add(ev);
         }
     }
 
