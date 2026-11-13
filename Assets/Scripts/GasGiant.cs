@@ -7,6 +7,8 @@ using UnityEngine;
 public class GasGiant : MonoBehaviour
 {
     [Header("Motion")]
+    public Vector3 orbitCenter = Vector3.zero;
+    public bool useOrbitCenter = false;
     public float spinSpeed = 5f;
     public float orbitSpeed = 0.05f;
     public float orbitRadius = 20f;
@@ -28,11 +30,14 @@ public class GasGiant : MonoBehaviour
         _rb.mass = 10000f;
         _rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
 
-        _orbitCenter = transform.position;
+        if (useOrbitCenter)
+            _orbitCenter = orbitCenter;
+        else
+            _orbitCenter = transform.position;
         _spinAxis = Random.onUnitSphere;
         spinSpeed = Random.Range(0.5f, 2f);
-        orbitSpeed = Random.Range(0.005f, 0.02f);
-        orbitRadius = Random.Range(80f, 200f);
+        orbitSpeed = Random.Range(0.001f, 0.005f);
+        orbitRadius = Random.Range(40f, 120f);
 
         _rb.angularVelocity = _spinAxis * (spinSpeed * Mathf.Deg2Rad);
         // initial tangential velocity

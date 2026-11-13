@@ -229,6 +229,13 @@ public class SpaceStreamer : MonoBehaviour
             planet.transform.position = pos;
             float pScale = Random.Range(50f, 120f);
             planet.transform.localScale = Vector3.one * pScale;
+            // orbit the star (system center)
+            var gg = planet.GetComponent<GasGiant>();
+            if (gg != null)
+            {
+                gg.useOrbitCenter = true;
+                gg.orbitCenter = sys.center;
+            }
             chunk.instances.Add(planet);
         }
 
