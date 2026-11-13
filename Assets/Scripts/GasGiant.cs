@@ -64,45 +64,6 @@ public class GasGiant : MonoBehaviour
         var rend = GetComponent<Renderer>();
         if (rend == null) return;
 
-        // Try to use a PPS gas gradient texture
-        string[] gradients = new string[] {
-            "Assets/Procedural Planets and Stars/Demo/GeneratedGradients/Gas/PPS_gradient_gasBronze.png",
-            "Assets/Procedural Planets and Stars/Demo/GeneratedGradients/Gas/PPS_gradient_gasDrip.png",
-            "Assets/Procedural Planets and Stars/Demo/GeneratedGradients/Gas/PPS_gradient_gasHaven.png",
-            "Assets/Procedural Planets and Stars/Demo/GeneratedGradients/Gas/PPS_gradient_gasVile.png",
-            "Assets/Procedural Planets and Stars/Demo/GeneratedGradients/Gas/PPS_gradient_gasWish.png",
-            "Assets/Procedural Planets and Stars/Demo/GeneratedGradients/Gas/PPS_gradient_orangeFire.png",
-        };
-        string gradPath = gradients[Random.Range(0, gradients.Length)];
-        var gradTex = Resources.Load<Texture2D>(gradPath); // won't work, use AssetDatabase
-        // Actually load via UnityEditor (editor-only, fine for this project)
-        gradTex = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>(gradPath);
-
-        var sh = Shader.Find("Universal Render Pipeline/Lit");
-        if (sh == null) sh = Shader.Find("Standard");
-        var mat = new Material(sh);
-        mat.color = Color.white;
-        if (gradTex != null)
-        {
-            if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", gradTex);
-            if (mat.HasProperty("_MainTex")) mat.SetTexture("_MainTex", gradTex);
-        }
-        else
-        {
-            // fallback: procedural banded texture
-            GenerateProceduralTexture(mat);
-        }
-        if (mat.HasProperty("_EmissionColor"))
-        {
-            mat.EnableKeyword("_EMISSION");
-            mat.SetColor("_EmissionColor", new Color(0.15f, 0.12f, 0.1f));
-            if (gradTex != null && mat.HasProperty("_EmissionMap")) mat.SetTexture("_EmissionMap", gradTex);
-        }
-        rend.material = mat;
-    }
-
-    private void GenerateProceduralTexture(Material mat)
-    {
         int w = 512, h = 256;
         var tex = new Texture2D(w, h, TextureFormat.RGB24, false);
         var px = new Color[w * h];
@@ -110,6 +71,7 @@ public class GasGiant : MonoBehaviour
             new Color[] { new Color(0.85f,0.7f,0.5f), new Color(0.7f,0.4f,0.2f), new Color(0.9f,0.85f,0.7f), new Color(0.5f,0.25f,0.15f), new Color(0.95f,0.6f,0.4f) },
             new Color[] { new Color(0.7f,0.85f,0.95f), new Color(0.4f,0.6f,0.8f), new Color(0.9f,0.95f,1f), new Color(0.2f,0.4f,0.6f), new Color(0.6f,0.8f,0.95f) },
             new Color[] { new Color(0.9f,0.75f,0.5f), new Color(0.75f,0.5f,0.3f), new Color(0.95f,0.9f,0.75f), new Color(0.6f,0.4f,0.25f), new Color(0.85f,0.65f,0.45f) },
+            new Color[] { new Color(0.8f,0.3f,0.2f), new Color(0.6f,0.15f,0.1f), new Color(0.9f,0.5f,0.3f), new Color(0.4f,0.1f,0.05f), new Color(0.85f,0.4f,0.25f) },
         };
         var pal = palettes[Random.Range(0, palettes.Length)];
         for (int y = 0; y < h; y++)
@@ -125,12 +87,30 @@ public class GasGiant : MonoBehaviour
             float dy = (y / (float)h) - 0.4f;
             float spot = Mathf.Exp(-(dx * dx * 20f + dy * dy * 40f));
             bandColor = Color.Lerp(bandColor, new Color(0.6f, 0.2f, 0.15f), spot * 0.6f);
+            // add subtle horizontal streaks
+            float streak = Mathf.PerlinNoise(x * 0.02f, v * 12f);
+            bandColor = Color.Lerp(bandColor, bandColor * 1.1f, streak * 0.15f);
             px[y * w + x] = bandColor;
         }
         tex.SetPixels(px);
         tex.Apply();
+        tex.wrapMode = TextureWrapMode.Repeat;
+
+        var sh = Shader.Find("Universal Render Pipeline/Lit");
+        if (sh == null) sh = Shader.Find("Standard");
+        var mat = new Material(sh);
+        mat.color = Color.white;
         if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", tex);
         if (mat.HasProperty("_MainTex")) mat.SetTexture("_MainTex", tex);
+        if (mat.HasProperty("_EmissionColor"))
+        {
+            mat.EnableKeyword("_EMISSION");
+            mat.SetColor("_EmissionColor", new Color(0.12f, 0.1f, 0.08f));
+            if (mat.HasProperty("_EmissionMap")) mat.SetTexture("_EmissionMap", tex);
+        }
+        rend.material = mat;
     }
+
+
 
 }
