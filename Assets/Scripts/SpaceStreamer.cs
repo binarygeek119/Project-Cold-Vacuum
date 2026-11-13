@@ -117,7 +117,7 @@ public class SpaceStreamer : MonoBehaviour
             if (ship != null) target = ship.transform;
             else if (Camera.main != null) target = Camera.main.transform;
         }
-        if (target == null) return;
+        if (target == null) { Debug.LogWarning("SpaceStreamer: target is null"); return; }
 
         // Keep skybox dome centered on the ship
         if (dome != null) dome.position = target.position;
@@ -161,6 +161,7 @@ public class SpaceStreamer : MonoBehaviour
             if (!desired.Contains(coord)) continue;
             LoadChunk(coord);
             spawns++;
+            Debug.Log("SpaceStreamer: loaded chunk " + coord);
         }
 
         // Process unloads
