@@ -761,6 +761,17 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 7949389121052969485, guid: d4f9921d5196ee9459827a8b13bf231b, type: 3}
   m_PrefabInstance: {fileID: 1455921840}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1455921848 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 8325147015092460081, guid: d4f9921d5196ee9459827a8b13bf231b, type: 3}
+  m_PrefabInstance: {fileID: 1455921840}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eca71ef326f611a45ba773046feb0c32, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!4 &1496895746 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6198664759164143915, guid: 805d67372aacc1b41a58e727d7d2c9e6, type: 3}
@@ -925,6 +936,53 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 0bb8921464e4e9441a13f139944abfb4, type: 3}
+--- !u!1 &1810809007
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1810809009}
+  - component: {fileID: 1810809008}
+  m_Layer: 0
+  m_Name: GameInitializer
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1810809008
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1810809007}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 38e42a247b3684143b30c4bf243568c0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Veridian.Starship.Player::Veridian.Starship.Player.GameInitializer
+  _playerCamera: {fileID: 330585545}
+  _playerDriver: {fileID: 1455921848}
+  _inputProviderPrefab: {fileID: 0}
+--- !u!4 &1810809009
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1810809007}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2035070392
 GameObject:
   m_ObjectHideFlags: 0
@@ -1002,3 +1060,4 @@ SceneRoots:
   - {fileID: 698183304}
   - {fileID: 1799000847}
   - {fileID: 1455921840}
+  - {fileID: 1810809009}

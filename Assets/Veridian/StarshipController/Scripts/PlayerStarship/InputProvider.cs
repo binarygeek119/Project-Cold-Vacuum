@@ -157,15 +157,26 @@ namespace Veridian.Starship.Player
                 .With("Left", KeyCodeToPath(keyBindings.leftThrust))
                 .With("Right", KeyCodeToPath(keyBindings.rightThrust));
 
+            // Gamepad: left stick for movement
+            MoveAction.AddBinding("<Gamepad>/leftStick");
+
             VerticalMovementAction = _playerMap.AddAction("VerticalMovement", InputActionType.Value);
             VerticalMovementAction.AddCompositeBinding("1DAxis")
                .With("Positive", KeyCodeToPath(keyBindings.verticalThrustUp))
                .With("Negative", KeyCodeToPath(keyBindings.verticalThrustDown));
 
+            // Gamepad: right trigger up, left trigger down (vertical thrust)
+            VerticalMovementAction.AddBinding("<Gamepad>/rightTrigger");
+            VerticalMovementAction.AddBinding("<Gamepad>/leftTrigger").WithProcessor("invert");
+
             RollAction = _playerMap.AddAction("Roll", InputActionType.Value);
             RollAction.AddCompositeBinding("1DAxis")
                 .With("Positive", KeyCodeToPath(keyBindings.rollLeft))
                 .With("Negative", KeyCodeToPath(keyBindings.rollRight));
+
+            // Gamepad: bumpers for roll
+            RollAction.AddBinding("<Gamepad>/leftShoulder");
+            RollAction.AddBinding("<Gamepad>/rightShoulder").WithProcessor("invert");
 
             ZoomAction = _playerMap.AddAction("Zoom", InputActionType.Value);
             ZoomAction.AddCompositeBinding("1DAxis")
@@ -178,11 +189,14 @@ namespace Veridian.Starship.Player
 
             // Look Action
             LookAction = _playerMap.AddAction("Look", InputActionType.Value, "<Mouse>/delta");
+            LookAction.AddBinding("<Gamepad>/rightStick");
 
             // System Actions
             PauseAction = _playerMap.AddAction("Pause", InputActionType.Button, KeyCodeToPath(keyBindings.pause));
 
             BoostAction = _playerMap.AddAction("Boost", InputActionType.Button, KeyCodeToPath(keyBindings.boost));
+
+            BoostAction.AddBinding("<Gamepad>/leftTrigger");
             FireBombAction = _playerMap.AddAction("FireBomb", InputActionType.Button, KeyCodeToPath(keyBindings.fireBomb));
             ScrollAction = _playerMap.AddAction("Scroll", InputActionType.Value, "<Mouse>/scroll/y");
 
@@ -190,8 +204,12 @@ namespace Veridian.Starship.Player
             FirePrimaryAction = _playerMap.AddAction("FirePrimary", InputActionType.Button);
             AddBinding(FirePrimaryAction, keyBindings.firePrimary, "<Mouse>/leftButton");
 
+            FirePrimaryAction.AddBinding("<Gamepad>/buttonSouth");
+
             FireSecondaryAction = _playerMap.AddAction("FireSecondary", InputActionType.Button);
             AddBinding(FireSecondaryAction, keyBindings.fireSecondary, null); // No mouse default
+
+            FireSecondaryAction.AddBinding("<Gamepad>/buttonWest");
 
             AimModeAction = _playerMap.AddAction("AimMode", InputActionType.Button);
             AddBinding(AimModeAction, keyBindings.aimMode, "<Mouse>/rightButton");
