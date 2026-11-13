@@ -42,6 +42,12 @@ public class GasGiant : MonoBehaviour
         if (tangent.sqrMagnitude < 0.01f) tangent = Vector3.right;
         _rb.linearVelocity = tangent * (orbitSpeed * orbitRadius);
 
+        // Add rings (random, ~60% chance)
+        if (Random.value < 0.6f)
+        {
+            AddRings();
+        }
+
         // generate procedural gas-giant texture
         GenerateTexture();
     }
@@ -56,6 +62,41 @@ public class GasGiant : MonoBehaviour
             float centripetal = _rb.mass * (orbitSpeed * orbitSpeed * dist);
             centripetal = Mathf.Min(centripetal, 200f);
             _rb.AddForce(toCenter.normalized * centripetal, ForceMode.Force);
+        }
+    }
+
+    private void AddRings()
+    {
+        string ringMeshPath = "Assets/Mwester Studios/Simple Space Starter Kit/Models/Planet Rings.fbx";
+        var ringAsset = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(ringMeshPath);
+        if (ringAsset == null) return;
+
+        var ring = (GameObject)UnityEditor.PrefabUtility.InstantiatePrefab(ringAsset);
+        if (ring == null) ring = UnityEngine.Object.Instantiate(ringAsset);
+        ring.name = "Rings";
+        ring.transform.SetParent(transform, false);
+        ring.transform.localPosition = Vector3.zero;
+        ring.transform.localRotation = Quaternion.Euler(90f, 0f, 0f); // flat around equator
+        // scale ring to match planet (planet radius ~0.5 in local, ring is 64 units)
+        float ringScale = 1f / 64f * 1.8f;
+        ring.transform.localScale = new Vector3(ringScale, ringScale, ringScale);
+
+        // apply a random ring material
+        string[] ringMats = new string[] {
+            "Assets/Mwester Studios/Simple Space Starter Kit/Materials/Planet Materials/Rings 0.mat",
+            "Assets/Mwester Studios/Simple Space Starter Kit/Materials/Planet Materials/Rings 1.mat",
+            "Assets/Mwester Studios/Simple Space Starter Kit/Materials/Planet Materials/Rings 2.mat",
+            "Assets/Mwester Studios/Simple Space Starter Kit/Materials/Planet Materials/Rings 3.mat",
+            "Assets/Mwester Studios/Simple Space Starter Kit/Materials/Planet Materials/Rings 4.mat",
+            "Assets/Mwester Studios/Simple Space Starter Kit/Materials/Planet Materials/Rings 5.mat",
+            "Assets/Mwester Studios/Simple Space Starter Kit/Materials/Planet Materials/Dust Rings.mat",
+        };
+        var ringRend = ring.GetComponentInChildren<Renderer>();
+        if (ringRend != null)
+        {
+            var matPath = ringMats[Random.Range(0, ringMats.Length)];
+            var mat = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>(matPath);
+            if (mat != null) ringRend.sharedMaterial = mat;
         }
     }
 
