@@ -269,12 +269,68 @@ public class SpaceStreamer : MonoBehaviour
 
     private GameObject BuildNebula(System.Random rng)
     {
-        // Single large soft billboard cloud (not particles) for a clear cloud shape
-        var go = GameObject.CreatePrimitive(PrimitiveType.Quad);
-        var col = go.GetComponent<Collider>();
-        if (col != null) UnityEngine.Object.Destroy(col);
+        // 3D volumetric cloud: particle system forming a cloud volume
+        var parent = new GameObject("Nebula Cloud");
 
-        var rend = go.GetComponent<MeshRenderer>();
+        var ps = parent.AddComponent<ParticleSystem>();
+        var main = ps.main;
+        main.startLifetime = 15f;
+        main.startSpeed = 0.3f;
+        main.startSize = new ParticleSystem.MinMaxCurve(3f, 7f);
+        Color[] palette = new Color[] {
+            new Color(1f, 0.95f, 0.9f),
+            new Color(0.9f, 0.95f, 1f),
+            new Color(0.95f, 0.9f, 1f),
+            new Color(0.9f, 1f, 0.95f),
+        };
+        Color c = palette[rng.Next(palette.Length)];
+        main.startColor = c;
+        main.maxParticles = 250;
+        main.simulationSpace = ParticleSystemSimulationSpace.Local;
+        main.playOnAwake = true;
+        main.loop = true;
+
+        // emission
+        var em = ps.emission;
+        em.rateOverTime = 30f;
+
+        // shape: sphere volume
+        var shape = ps.shape;
+        shape.shapeType = ParticleSystemShapeType.Sphere;
+        shape.radius = 1f;
+
+        // noise for organic movement
+        var noise = ps.noise;
+        noise.enabled = true;
+        noise.strength = 0.5f;
+        noise.frequency = 0.3f;
+        noise.scrollSpeed = 0.15f;
+        noise.damping = true;
+
+        // color over lifetime: fade in/out
+        var col = ps.colorOverLifetime;
+        col.enabled = true;
+        var grad = new Gradient();
+        grad.SetKeys(
+            new GradientColorKey[] {
+                new GradientColorKey(c, 0f),
+                new GradientColorKey(c, 1f)
+            },
+            new GradientAlphaKey[] {
+                new GradientAlphaKey(0f, 0f),
+                new GradientAlphaKey(0.5f, 0.2f),
+                new GradientAlphaKey(0.5f, 0.8f),
+                new GradientAlphaKey(0f, 1f)
+            });
+        col.color = grad;
+
+        // size over lifetime
+        var sol = ps.sizeOverLifetime;
+        sol.enabled = true;
+        sol.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.EaseInOut(0f, 0.7f, 1f, 1.3f));
+
+        // renderer material
+        var rend = parent.GetComponent<ParticleSystemRenderer>();
         if (rend != null)
         {
             var tex = (nebulaMaterial != null && nebulaMaterial.HasProperty("_BaseMap")) ? nebulaMaterial.GetTexture("_BaseMap") : null;
@@ -288,10 +344,11 @@ public class SpaceStreamer : MonoBehaviour
             }
             mat.color = Color.white;
             rend.material = mat;
+            rend.renderMode = ParticleSystemRenderMode.Billboard;
         }
 
-        go.AddComponent<NebulaCloud>();
-        return go;
+        parent.AddComponent<NebulaCloud>();
+        return parent;
     }
 
     private GameObject GetAsteroid()
