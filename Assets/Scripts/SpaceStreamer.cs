@@ -270,19 +270,23 @@ public class SpaceStreamer : MonoBehaviour
         Color c = palette[rng.Next(palette.Length)];
         c = Color.Lerp(c, Color.white, 0.35f);
 
-        int layers = 2 + rng.Next(0, 2); // 2-3 layers
+        int layers = 3 + rng.Next(0, 3); // 3-5 layers
         for (int i = 0; i < layers; i++)
         {
             var q = GameObject.CreatePrimitive(PrimitiveType.Quad);
             var col = q.GetComponent<Collider>();
             if (col != null) UnityEngine.Object.Destroy(col);
             q.transform.SetParent(parent.transform, false);
-            // flat horizontal sheet
-            q.transform.localRotation = Quaternion.Euler(90f, rng.Next(0, 360), 0f);
-            q.transform.localPosition = new Vector3(0f, (i - (layers - 1) / 2f) * 1.5f, 0f);
-            float w = 1f + (float)rng.NextDouble() * 0.6f;
-            float h = 1f + (float)rng.NextDouble() * 0.6f;
-            q.transform.localScale = new Vector3(w, h, 1f) * (nebulaMinScale * 1.5f);
+            // flat horizontal sheet with varied rotation and offset
+            float layerRot = rng.Next(0, 360);
+            float layerY = (i - (layers - 1) / 2f) * (0.8f + (float)rng.NextDouble() * 0.6f);
+            float layerX = ((float)rng.NextDouble() - 0.5f) * 2f;
+            float layerZ = ((float)rng.NextDouble() - 0.5f) * 2f;
+            q.transform.localRotation = Quaternion.Euler(90f + (float)(rng.NextDouble() - 0.5) * 8f, layerRot, 0f);
+            q.transform.localPosition = new Vector3(layerX, layerY, layerZ);
+            float w = 0.7f + (float)rng.NextDouble() * 0.8f;
+            float h = 0.7f + (float)rng.NextDouble() * 0.8f;
+            q.transform.localScale = new Vector3(w, h, 1f) * (nebulaMinScale * 1.2f);
 
             var rend = q.GetComponent<MeshRenderer>();
             if (rend != null)
