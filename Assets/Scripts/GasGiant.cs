@@ -20,6 +20,9 @@ public class GasGiant : MonoBehaviour
         _rb = GetComponent<Rigidbody>();
         if (_rb == null) _rb = gameObject.AddComponent<Rigidbody>();
         _rb.useGravity = false;
+        // fly-throughable: colliders are triggers (no solid collision)
+        foreach (var c in GetComponents<Collider>()) c.isTrigger = true;
+        foreach (var c in GetComponentsInChildren<Collider>()) c.isTrigger = true;
         _rb.linearDamping = 0.2f;
         _rb.angularDamping = 0.1f;
         _rb.mass = 10000f;

@@ -177,6 +177,7 @@ public class SpaceStreamer : MonoBehaviour
             if (pcol != null) UnityEngine.Object.Destroy(pcol);
             var psc = planet.AddComponent<SphereCollider>();
             psc.radius = 0.5f;
+            psc.isTrigger = true;
             planet.AddComponent<GasGiant>();
             Vector3 plocal = new Vector3(
                 (float)rng.NextDouble() * chunkSize,
