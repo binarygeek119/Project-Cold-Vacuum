@@ -192,13 +192,79 @@ public class SpaceStreamer : MonoBehaviour
         Vector3Int sysChunk = WorldToChunk(sys.center);
         if (coord == sysChunk)
         {
+            // Star with LOD: far (light + twinkle) / near (full model)
+            var starParent = new GameObject("Star");
+            starParent.transform.position = sys.center;
+            float starScale = Random.Range(40f, 80f);
+
+            // Far representation: point light + small twinkling sprite
+            var farGO = new GameObject("Star Far");
+            farGO.transform.SetParent(starParent.transform, false);
+            var light = farGO.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = new Color(1f, 0.95f, 0.8f);
+            light.intensity = 3f;
+            light.range = starScale * 3f;
+            // twinkle particle
+            var twinkle = farGO.AddComponent<ParticleSystem>();
+            var tmain = twinkle.main;
+            tmain.startLifetime = 1f;
+            tmain.startSpeed = 0f;
+            tmain.startSize = starScale * 0.3f;
+            tmain.startColor = new Color(1f, 0.95f, 0.8f, 1f);
+            tmain.maxParticles = 1;
+            tmain.loop = true;
+            tmain.playOnAwake = true;
+            var tem = twinkle.emission;
+            tem.rateOverTime = 1f;
+            var tshape = twinkle.shape;
+            tshape.shapeType = ParticleSystemShapeType.Sphere;
+            tshape.radius = 0.1f;
+            var tcol = twinkle.colorOverLifetime;
+            tcol.enabled = true;
+            var tgrad = new Gradient();
+            tgrad.SetKeys(
+                new GradientColorKey[] { new GradientColorKey(new Color(1f,0.95f,0.8f), 0f) },
+                new GradientAlphaKey[] { new GradientAlphaKey(0.8f, 0f), new GradientAlphaKey(0.3f, 0.5f), new GradientAlphaKey(0.8f, 1f) });
+            tcol.color = tgrad;
+
+            // Near representation: full star model
+            GameObject nearGO = null;
             if (starPrefab != null)
             {
-                var star = (GameObject)Instantiate(starPrefab);
-                star.transform.position = sys.center;
-                star.transform.localScale = Vector3.one * Random.Range(40f, 80f);
-                chunk.instances.Add(star);
+                nearGO = (GameObject)Instantiate(starPrefab);
+                nearGO.name = "Star Near";
+                nearGO.transform.SetParent(starParent.transform, false);
+                nearGO.transform.localScale = Vector3.one * starScale;
             }
+            else
+            {
+                nearGO = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                nearGO.name = "Star Near";
+                nearGO.transform.SetParent(starParent.transform, false);
+                nearGO.transform.localScale = Vector3.one * starScale;
+                var rend = nearGO.GetComponent<Renderer>();
+                if (rend != null)
+                {
+                    var mat = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
+                    mat.color = new Color(1f, 0.95f, 0.8f);
+                    if (mat.HasProperty("_EmissionColor")) { mat.EnableKeyword("_EMISSION"); mat.SetColor("_EmissionColor", new Color(1f, 0.9f, 0.7f) * 2f); }
+                    rend.material = mat;
+                }
+                var col = nearGO.GetComponent<Collider>();
+                if (col != null) UnityEngine.Object.Destroy(col);
+            }
+
+            // LOD component
+            var lod = starParent.AddComponent<StarLOD>();
+            lod.farRepresentation = farGO;
+            lod.nearRepresentation = nearGO;
+            lod.lodDistance = 120f;
+
+            // scale the parent (visual only, children already scaled)
+            starParent.transform.localScale = Vector3.one;
+
+            chunk.instances.Add(starParent);
         }
 
         // Planets
