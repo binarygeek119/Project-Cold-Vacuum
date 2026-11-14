@@ -13,7 +13,7 @@ public class SkyboxDomeController : MonoBehaviour
 
     private Material _mat;
     private Texture2D _texA;
-    private int _currentSystem = -1;
+    private Vector3 _currentCenter = new Vector3(float.MaxValue, 0f, 0f);
     private bool _isFading = false;
     private SpaceStreamer _streamer;
 
@@ -56,42 +56,27 @@ public class SkyboxDomeController : MonoBehaviour
         if (Camera.main != null) transform.position = Camera.main.transform.position;
 
         if (_streamer == null || _isFading) return;
-        int sysIndex = GetNearestSystemIndex();
-        if (sysIndex >= 0 && sysIndex != _currentSystem)
+        if (TryGetNearestSystem(out Vector3 sysCenter, out float radius))
         {
-            _currentSystem = sysIndex;
-            StartCoroutine(FadeToNewTexture());
+            if (Vector3.Distance(sysCenter, _currentCenter) > 1f)
+            {
+                _currentCenter = sysCenter;
+                StartCoroutine(FadeToNewTexture());
+            }
         }
     }
 
-    private int GetNearestSystemIndex()
+    private bool TryGetNearestSystem(out Vector3 center, out float radius)
     {
-        if (_streamer == null) return -1;
-        var field = _streamer.GetType().GetField("systems", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        if (field == null) return -1;
-        var systems = field.GetValue(_streamer) as System.Collections.IList;
-        if (systems == null || systems.Count == 0) return -1;
+        center = Vector3.zero;
+        radius = 0f;
+        if (_streamer == null) return false;
         var target = _streamer.target;
-        if (target == null) return -1;
-        float minDist = float.MaxValue;
-        int idx = -1;
-        for (int i = 0; i < systems.Count; i++)
-        {
-            var sys = systems[i];
-            var centerField = sys.GetType().GetField("center");
-            if (centerField == null) continue;
-            Vector3 center = (Vector3)centerField.GetValue(sys);
-            float d = Vector3.Distance(target.position, center);
-            if (d < minDist) { minDist = d; idx = i; }
-        }
-        if (idx >= 0)
-        {
-            var sys = systems[idx];
-            var radiusField = sys.GetType().GetField("radius");
-            float radius = radiusField != null ? (float)radiusField.GetValue(sys) : 200f;
-            if (minDist > radius * 1.2f) return -1;
-        }
-        return idx;
+        if (target == null) return false;
+        if (!_streamer.TryGetNearestSystem(target.position, out center, out radius)) return false;
+        float minDist = Vector3.Distance(target.position, center);
+        if (minDist > radius * 1.2f) return false;
+        return true;
     }
 
     private System.Collections.IEnumerator FadeToNewTexture()

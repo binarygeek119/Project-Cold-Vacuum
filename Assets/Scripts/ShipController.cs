@@ -107,8 +107,9 @@ public class ShipController : MonoBehaviour
         }
         if (invertPitch) pitchInput = -pitchInput;
 
-        // Steering only works while thrusting
-        if (thrust <= triggerDeadzone)
+        // Steering works while thrusting or moving
+        bool canSteer = thrust > triggerDeadzone || _rb.linearVelocity.sqrMagnitude > 25f;
+        if (!canSteer)
         {
             pitchInput = 0f;
             yawInput = 0f;
@@ -143,10 +144,11 @@ public class ShipController : MonoBehaviour
         _rb.linearVelocity = fwd * _targetSpeed + lateral * 0.9f;
 
         // --- steering torque ---
-        _rb.AddTorque(transform.right * pitchInput * pitchTorque, ForceMode.Acceleration);
-        _rb.AddTorque(transform.up * yawInput * yawTorque, ForceMode.Acceleration);
+        float torqueScale = 1f + Mathf.Clamp01(_targetSpeed / Mathf.Max(hyperCruiseSpeed, 1f)) * 2f;
+        _rb.AddTorque(transform.right * pitchInput * pitchTorque * torqueScale, ForceMode.Acceleration);
+        _rb.AddTorque(transform.up * yawInput * yawTorque * torqueScale, ForceMode.Acceleration);
         float rollCmd = rollInput + (-yawInput * 0.5f);
-        _rb.AddTorque(transform.forward * rollCmd * rollTorque, ForceMode.Acceleration);
+        _rb.AddTorque(transform.forward * rollCmd * rollTorque * torqueScale, ForceMode.Acceleration);
 
         // --- banking visual (tilt model child) ---
         _bank = Mathf.Lerp(_bank, yawInput * maxBank * 0.6f + rollInput * maxBank, 5f * Time.fixedDeltaTime);
@@ -185,6 +187,14 @@ public class ShipController : MonoBehaviour
     {
         if (v.magnitude < dz) return Vector2.zero;
         return v.normalized * ((v.magnitude - dz) / (1f - dz));
+    }
+
+    void OnCollisionEnter(Collision collision)
+    {
+        if (collision.collider != null && collision.collider.GetComponent<AsteroidMotion>() != null)
+        {
+            _hyperDriveActive = false;
+        }
     }
 
     void OnDisable()

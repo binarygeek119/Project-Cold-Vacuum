@@ -34,6 +34,8 @@ public class SpaceStreamer : MonoBehaviour
     public float systemSpacingMax = 45000f;
     public float systemRadiusMin = 1200f;
     public float systemRadiusMax = 2200f;
+    public float spawnAheadDistance = 120000f;
+    public float spawnConeDegrees = 40f;
 
     private Transform dome;
 
@@ -74,16 +76,17 @@ public class SpaceStreamer : MonoBehaviour
     private void GenerateSystems()
     {
         systems.Clear();
+        Vector3 fwd = (target != null) ? target.forward : Vector3.forward;
         Vector3 cursor = Vector3.zero;
         for (int i = 0; i < systemsAhead; i++)
         {
             float spacing = (i == 0) ? firstSystemDistance : Lerp(systemSpacingMin, systemSpacingMax, (float)_rng.NextDouble());
-            cursor += Vector3.forward * spacing;
+            cursor += fwd * spacing;
             float radius = Lerp(systemRadiusMin, systemRadiusMax, (float)_rng.NextDouble());
-            Vector3 lateral = new Vector3(
-                (float)(_rng.NextDouble() * 2 - 1) * radius,
-                (float)(_rng.NextDouble() * 2 - 1) * radius * 0.25f,
-                0f);
+            Vector3 right = Mathf.Abs(Vector3.Dot(fwd, Vector3.up)) > 0.95f ? Vector3.right : Vector3.Cross(fwd, Vector3.up).normalized;
+            Vector3 up = Vector3.Cross(right, fwd).normalized;
+            Vector3 lateral = right * ((float)(_rng.NextDouble() * 2 - 1) * radius)
+                            + up * ((float)(_rng.NextDouble() * 2 - 1) * radius * 0.25f);
             var sys = new StarSystem
             {
                 center = cursor + lateral,
@@ -118,6 +121,15 @@ public class SpaceStreamer : MonoBehaviour
         var sys = GetNearestSystem(target.position);
         if (sys == null) return false;
         return Vector3.Distance(target.position, sys.center) <= sys.radius;
+    }
+
+    public bool TryGetNearestSystem(Vector3 pos, out Vector3 center, out float radius)
+    {
+        var sys = GetNearestSystem(pos);
+        if (sys == null) { center = Vector3.zero; radius = 0f; return false; }
+        center = sys.center;
+        radius = sys.radius;
+        return true;
     }
 
     private StarSystem GetNearestSystem(Vector3 pos)
@@ -167,28 +179,36 @@ public class SpaceStreamer : MonoBehaviour
 
     private void RemoveDistantSystems()
     {
-        float limit = unloadDistance * 2f;
         for (int i = systems.Count - 1; i >= 0; i--)
         {
-            if (Vector3.Distance(target.position, systems[i].center) > limit)
-            {
-                if (systems[i].loaded && systems[i].root != null) Destroy(systems[i].root);
-                systems.RemoveAt(i);
-            }
+            Vector3 to = systems[i].center - target.position;
+            float d = to.magnitude;
+            if (d > spawnAheadDistance * 1.5f) { Cull(systems[i]); systems.RemoveAt(i); continue; }
+            if (d > unloadDistance && Vector3.Dot(to, target.forward) < 0f) { Cull(systems[i]); systems.RemoveAt(i); }
         }
+    }
+
+    private void Cull(StarSystem sys)
+    {
+        if (sys.loaded && sys.root != null) Destroy(sys.root);
+        sys.loaded = false;
+        sys.root = null;
     }
 
     private void EnsureSystemsAroundShip()
     {
-        int nearby = 0;
+        int ahead = 0;
         foreach (var s in systems)
-            if (Vector3.Distance(target.position, s.center) < 300000f) nearby++;
+        {
+            Vector3 to = s.center - target.position;
+            if (Vector3.Dot(to, target.forward) > 0f && to.magnitude < spawnAheadDistance) ahead++;
+        }
 
         int safety = 0;
-        while (nearby < systemsAhead && safety < systemsAhead * 4)
+        while (ahead < systemsAhead && safety < systemsAhead * 6)
         {
             safety++;
-            Vector3 dir = RandomOnUnitSphere();
+            Vector3 dir = RandomConeDir(target.forward, spawnConeDegrees);
             float spacing = Lerp(systemSpacingMin, systemSpacingMax, (float)_rng.NextDouble());
             float radius = Lerp(systemRadiusMin, systemRadiusMax, (float)_rng.NextDouble());
             Vector3 center = target.position + dir * spacing;
@@ -197,10 +217,7 @@ public class SpaceStreamer : MonoBehaviour
                 (float)(_rng.NextDouble() * 2 - 1) * radius * 0.25f,
                 (float)(_rng.NextDouble() * 2 - 1) * radius * 0.5f);
 
-            bool tooClose = false;
-            foreach (var s in systems)
-                if (Vector3.Distance(s.center, center) < systemSpacingMin * 0.5f) { tooClose = true; break; }
-            if (tooClose) continue;
+            if (TooClose(center)) continue;
 
             var sys = new StarSystem
             {
@@ -213,14 +230,27 @@ public class SpaceStreamer : MonoBehaviour
                 hasEnemy = _rng.NextDouble() < 0.5,
             };
             systems.Add(sys);
-            nearby++;
+            ahead++;
         }
     }
 
-    private static Vector3 RandomOnUnitSphere()
+    private bool TooClose(Vector3 center)
     {
-        // deterministic-ish via Unity's Random; acceptable for direction
-        return Random.onUnitSphere;
+        foreach (var s in systems)
+            if (Vector3.Distance(s.center, center) < systemSpacingMin * 0.5f) return true;
+        return false;
+    }
+
+    private Vector3 RandomConeDir(Vector3 fwd, float halfAngleDeg)
+    {
+        float a = (float)_rng.NextDouble() * Mathf.PI * 2f;
+        float cosMax = Mathf.Cos(halfAngleDeg * Mathf.Deg2Rad);
+        float cosT = Lerp(cosMax, 1f, (float)_rng.NextDouble());
+        float sinT = Mathf.Sqrt(Mathf.Max(0f, 1f - cosT * cosT));
+        Vector3 up = Mathf.Abs(Vector3.Dot(fwd, Vector3.up)) > 0.95f ? Vector3.right : Vector3.up;
+        Vector3 right = Vector3.Cross(up, fwd).normalized;
+        Vector3 trueUp = Vector3.Cross(fwd, right);
+        return (fwd * cosT + right * (Mathf.Cos(a) * sinT) + trueUp * (Mathf.Sin(a) * sinT)).normalized;
     }
 
     private void BuildSystem(StarSystem sys)
@@ -254,6 +284,35 @@ public class SpaceStreamer : MonoBehaviour
         var gRend = glowGO.GetComponent<Renderer>();
         if (gRend != null)
         {
+            var sh = Shader.Find("Universal Render Pipeline/Lit");
+            if (sh == null) sh = Shader.Find("Standard");
+            var mat = new Material(sh);
+            Color sc = new Color(1f, 0.95f, 0.8f);
+            mat.SetFloat("_Surface", 1f);
+            mat.SetFloat("_Blend", 1f);
+            mat.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.One);
+            mat.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.One);
+            mat.SetFloat("_ZWrite", 0f);
+            mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            mat.SetColor("_BaseColor", sc * 1.5f);
+            if (mat.HasProperty("_EmissionColor")) { mat.EnableKeyword("_EMISSION"); mat.SetColor("_EmissionColor", sc * 3f); }
+            gRend.material = mat;
+            gRend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
+
+        // Far representation (toggled) - emissive core
+        var farGO = new GameObject("Star Far");
+        farGO.transform.SetParent(starParent.transform, false);
+        var farCore = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        farCore.name = "Star Far Core";
+        farCore.transform.SetParent(farGO.transform, false);
+        farCore.transform.localScale = Vector3.one * starScale * 0.9f;
+        var fcCol = farCore.GetComponent<Collider>();
+        if (fcCol != null) Destroy(fcCol);
+        var fcRend = farCore.GetComponent<Renderer>();
+        if (fcRend != null)
+        {
             var sh = Shader.Find("Universal Render Pipeline/Unlit");
             if (sh == null) sh = Shader.Find("Unlit/Color");
             if (sh == null) sh = Shader.Find("Standard");
@@ -262,14 +321,14 @@ public class SpaceStreamer : MonoBehaviour
             mat.color = sc;
             if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", sc);
             if (mat.HasProperty("_EmissionColor")) { mat.EnableKeyword("_EMISSION"); mat.SetColor("_EmissionColor", sc * 3f); }
-            gRend.material = mat;
-            gRend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            fcRend.material = mat;
+            fcRend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         }
 
-        // Far representation (toggled) - twinkle
-        var farGO = new GameObject("Star Far");
-        farGO.transform.SetParent(starParent.transform, false);
-        var twinkle = farGO.AddComponent<ParticleSystem>();
+        // Twinkle (always active, moved out of farGO)
+        var twinkleGO = new GameObject("Star Twinkle");
+        twinkleGO.transform.SetParent(starParent.transform, false);
+        var twinkle = twinkleGO.AddComponent<ParticleSystem>();
         var tmain = twinkle.main;
         tmain.startLifetime = 1f;
         tmain.startSpeed = 0f;
@@ -287,7 +346,7 @@ public class SpaceStreamer : MonoBehaviour
         tcol.enabled = true;
         var tgrad = new Gradient();
         tgrad.SetKeys(
-            new GradientColorKey[] { new GradientColorKey(new Color(1f, 0.95f, 0.8f), 0f) },
+            new GradientColorKey[] { new GradientColorKey(new Color(1f,0.95f,0.8f), 0f) },
             new GradientAlphaKey[] { new GradientAlphaKey(0.6f, 0f), new GradientAlphaKey(0.2f, 0.5f), new GradientAlphaKey(0.6f, 1f) });
         tcol.color = tgrad;
 
@@ -327,6 +386,7 @@ public class SpaceStreamer : MonoBehaviour
         lod.farRepresentation = farGO;
         lod.nearRepresentation = nearGO;
         lod.lodDistance = starScale * 6f;
+        lod.verbose = true;
 
         starParent.transform.localScale = Vector3.one;
         var starCT = starParent.AddComponent<CompassTarget>();

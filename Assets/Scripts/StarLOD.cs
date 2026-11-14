@@ -9,6 +9,7 @@ public class StarLOD : MonoBehaviour
     public GameObject farRepresentation;   // simple light + twinkle
     public GameObject nearRepresentation;   // full star model
     public float lodDistance = 400f;        // distance at which to switch to near
+    public bool verbose = false;
 
     private Transform _cam;
 
@@ -39,8 +40,7 @@ public class StarLOD : MonoBehaviour
         float dist = Vector3.Distance(transform.position, _cam.position);
         bool showNear = dist < lodDistance;
 
-        // Debug: log distance periodically
-        if (Time.frameCount % 60 == 0)
+        if (verbose && Time.frameCount % 60 == 0)
         {
             Debug.Log($"[StarLOD] {gameObject.name}: dist={dist:F0}m, lodDistance={lodDistance}m, showNear={showNear}, farActive={farRepresentation?.activeSelf}, nearActive={nearRepresentation?.activeSelf}");
         }

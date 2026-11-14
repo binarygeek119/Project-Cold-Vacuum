@@ -4,8 +4,8 @@ using UnityEditor;
 #endif
 
 /// <summary>
-/// A dynamic gas-giant planet: procedural banded texture, slow spin, gentle orbit.
-/// Orbits on the transform (deterministic, no rigidbody drift).
+/// A dynamic gas-giant planet: procedural banded texture, gentle orbit via rigidbody.
+/// Orbit velocity is derived from the actual spawn radius so planets don't spiral in.
 /// </summary>
 public class GasGiant : MonoBehaviour
 {
@@ -14,40 +14,58 @@ public class GasGiant : MonoBehaviour
     public bool useOrbitCenter = false;
     public float spinSpeed = 5f;
     public float orbitSpeed = 0.05f;
-    public float orbitRadius = 20f;
 
+    private Rigidbody _rb;
     private Vector3 _orbitCenter;
     private Vector3 _spinAxis;
 
     void Start()
     {
-        // fly-throughable: colliders are triggers (no solid collision)
+        _rb = GetComponent<Rigidbody>();
+        if (_rb == null) _rb = gameObject.AddComponent<Rigidbody>();
+        _rb.useGravity = false;
         foreach (var c in GetComponents<Collider>()) c.isTrigger = true;
         foreach (var c in GetComponentsInChildren<Collider>()) c.isTrigger = true;
+        _rb.linearDamping = 0.2f;
+        _rb.angularDamping = 0.1f;
+        _rb.mass = 10000f;
+        _rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
 
         if (useOrbitCenter)
             _orbitCenter = orbitCenter;
         else
             _orbitCenter = transform.position;
+
         _spinAxis = Random.onUnitSphere;
         spinSpeed = Random.Range(0.5f, 2f);
         orbitSpeed = Random.Range(0.001f, 0.005f);
-        orbitRadius = Random.Range(40f, 120f);
 
-        // Add rings (random, ~60% chance)
+        Vector3 toCenter = transform.position - _orbitCenter;
+        float r = Mathf.Max(toCenter.magnitude, 1f);
+        Vector3 tangent = Vector3.Cross(Vector3.up, toCenter).normalized;
+        if (tangent.sqrMagnitude < 0.01f) tangent = Vector3.right;
+        _rb.linearVelocity = tangent * (orbitSpeed * r);
+        _rb.angularVelocity = _spinAxis * (spinSpeed * Mathf.Deg2Rad);
+
         if (Random.value < 0.6f)
         {
             AddRings();
         }
 
-        // generate procedural gas-giant texture
         GenerateTexture();
     }
 
-    void Update()
+    void FixedUpdate()
     {
-        transform.RotateAround(_orbitCenter, Vector3.up, orbitSpeed * 60f * Time.deltaTime);
-        transform.Rotate(_spinAxis, spinSpeed * 60f * Time.deltaTime);
+        if (_rb == null) return;
+        Vector3 toCenter = _orbitCenter - transform.position;
+        float dist = toCenter.magnitude;
+        if (dist > 0.01f)
+        {
+            float centripetal = _rb.mass * (orbitSpeed * orbitSpeed * dist);
+            centripetal = Mathf.Min(centripetal, _rb.mass);
+            _rb.AddForce(toCenter.normalized * centripetal, ForceMode.Force);
+        }
     }
 
     private void AddRings()
