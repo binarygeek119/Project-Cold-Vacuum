@@ -210,6 +210,7 @@ public class SpaceStreamer : MonoBehaviour
             if (Vector3.Dot(to, target.forward) > 0f && to.magnitude < spawnAheadDistance) ahead++;
         }
 
+        if (_rng == null) _rng = new System.Random(seed);
         int safety = 0;
         while (ahead < systemsAhead && safety < systemsAhead * 6)
         {
@@ -245,6 +246,7 @@ public class SpaceStreamer : MonoBehaviour
 
     private Vector3 RandomConeDir(Vector3 fwd, float halfAngleDeg)
     {
+        if (_rng == null) _rng = new System.Random(seed);
         float a = (float)_rng.NextDouble() * Mathf.PI * 2f;
         float cosMax = Mathf.Cos(halfAngleDeg * Mathf.Deg2Rad);
         float cosT = Lerp(cosMax, 1f, (float)_rng.NextDouble());
