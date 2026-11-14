@@ -73,8 +73,8 @@ public class ShipController : MonoBehaviour
             yawInput = steer.x;
             thrust = gp.rightTrigger.ReadValue();
             brake = gp.leftTrigger.ReadValue();
-            if (gp.leftShoulder.isPressed) rollInput -= 1f;
-            if (gp.rightShoulder.isPressed) rollInput += 1f;
+            if (gp.leftShoulder.isPressed) rollInput += 1f;
+            if (gp.rightShoulder.isPressed) rollInput -= 1f;
             Vector2 trim = ApplyDeadzone(gp.rightStick.ReadValue(), stickDeadzone);
             yawInput += trim.x * 0.4f;
             pitchInput += -trim.y * 0.4f;
