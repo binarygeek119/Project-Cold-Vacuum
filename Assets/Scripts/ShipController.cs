@@ -128,13 +128,27 @@ public class ShipController : MonoBehaviour
 
         // --- speed target (coast, don't snap to zero) ---
         float want;
-        if (brake > triggerDeadzone) want = 0f;
+        float rate;
+        float blend;
+        if (brake > triggerDeadzone)
+        {
+            want = 0f;
+            rate = (_hyperDriveActive ? hyperCruiseSpeed : maxSpeed) * 3f * brake * Time.fixedDeltaTime;
+            blend = 1f;
+        }
         else if (thrust > triggerDeadzone)
+        {
             want = _hyperDriveActive ? hyperCruiseSpeed : maxSpeed;
+            rate = (_hyperDriveActive ? hyperCruiseSpeed / hyperSpoolTime : maxSpeed / 1.5f) * Time.fixedDeltaTime;
+            blend = _hyperDriveActive ? 0.35f : 0.6f;
+        }
         else
+        {
             want = _hyperDriveActive ? hyperCruiseSpeed * 0.75f : _targetSpeed; // coast
+            rate = (_hyperDriveActive ? hyperCruiseSpeed / hyperSpoolTime : maxSpeed / 1.5f) * Time.fixedDeltaTime;
+            blend = _hyperDriveActive ? 0.35f : 0.6f;
+        }
 
-        float rate = (_hyperDriveActive ? hyperCruiseSpeed / hyperSpoolTime : maxSpeed / 1.5f) * Time.fixedDeltaTime;
         _targetSpeed = Mathf.MoveTowards(_targetSpeed, want, rate);
 
         Vector3 fwd = transform.forward;
@@ -142,7 +156,7 @@ public class ShipController : MonoBehaviour
         float fwdSpeed = Vector3.Dot(v, fwd);
         Vector3 lateral = v - fwd * fwdSpeed;
         Vector3 desired = fwd * _targetSpeed + lateral * 0.9f;
-        _rb.linearVelocity = Vector3.Lerp(v, desired, _hyperDriveActive ? 0.35f : 0.6f);
+        _rb.linearVelocity = Vector3.Lerp(v, desired, blend);
 
         // --- steering torque ---
         float torqueScale = 1f + Mathf.Clamp01(_targetSpeed / Mathf.Max(hyperCruiseSpeed, 1f)) * 2f;
