@@ -7,10 +7,10 @@ using UnityEngine;
 /// </summary>
 public class StarField : MonoBehaviour
 {
-    public int starCount = 300;
-    public float minDistance = 50000f;
-    public float maxDistance = 500000f;
-    public float lodDistance = 100000f;
+    public int starCount = 400;
+    public float minDistance = 40000f;
+    public float maxDistance = 250000f;
+    public float lodDistance = 80000f;
     public GameObject starNearPrefab; // full star model (optional)
 
     private Transform _target;

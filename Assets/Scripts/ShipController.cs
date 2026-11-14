@@ -141,7 +141,8 @@ public class ShipController : MonoBehaviour
         Vector3 v = _rb.linearVelocity;
         float fwdSpeed = Vector3.Dot(v, fwd);
         Vector3 lateral = v - fwd * fwdSpeed;
-        _rb.linearVelocity = fwd * _targetSpeed + lateral * 0.9f;
+        Vector3 desired = fwd * _targetSpeed + lateral * 0.9f;
+        _rb.linearVelocity = Vector3.Lerp(v, desired, _hyperDriveActive ? 0.35f : 0.6f);
 
         // --- steering torque ---
         float torqueScale = 1f + Mathf.Clamp01(_targetSpeed / Mathf.Max(hyperCruiseSpeed, 1f)) * 2f;

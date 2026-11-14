@@ -35,7 +35,7 @@ public class SpaceStreamer : MonoBehaviour
     public float systemRadiusMin = 1200f;
     public float systemRadiusMax = 2200f;
     public float spawnAheadDistance = 120000f;
-    public float spawnConeDegrees = 40f;
+    public float spawnConeDegrees = 65f;
 
     private Transform dome;
 
@@ -179,12 +179,18 @@ public class SpaceStreamer : MonoBehaviour
 
     private void RemoveDistantSystems()
     {
+        int behind = 0;
         for (int i = systems.Count - 1; i >= 0; i--)
         {
             Vector3 to = systems[i].center - target.position;
             float d = to.magnitude;
+            bool isBehind = Vector3.Dot(to, target.forward) < 0f;
             if (d > spawnAheadDistance * 1.5f) { Cull(systems[i]); systems.RemoveAt(i); continue; }
-            if (d > unloadDistance && Vector3.Dot(to, target.forward) < 0f) { Cull(systems[i]); systems.RemoveAt(i); }
+            if (d > unloadDistance && isBehind)
+            {
+                if (behind >= 2) { Cull(systems[i]); systems.RemoveAt(i); }
+                else behind++;
+            }
         }
     }
 
@@ -212,10 +218,6 @@ public class SpaceStreamer : MonoBehaviour
             float spacing = Lerp(systemSpacingMin, systemSpacingMax, (float)_rng.NextDouble());
             float radius = Lerp(systemRadiusMin, systemRadiusMax, (float)_rng.NextDouble());
             Vector3 center = target.position + dir * spacing;
-            center += new Vector3(
-                (float)(_rng.NextDouble() * 2 - 1) * radius * 0.5f,
-                (float)(_rng.NextDouble() * 2 - 1) * radius * 0.25f,
-                (float)(_rng.NextDouble() * 2 - 1) * radius * 0.5f);
 
             if (TooClose(center)) continue;
 
@@ -237,7 +239,7 @@ public class SpaceStreamer : MonoBehaviour
     private bool TooClose(Vector3 center)
     {
         foreach (var s in systems)
-            if (Vector3.Distance(s.center, center) < systemSpacingMin * 0.5f) return true;
+            if (Vector3.Distance(s.center, center) < systemSpacingMin * 0.35f) return true;
         return false;
     }
 
@@ -284,19 +286,18 @@ public class SpaceStreamer : MonoBehaviour
         var gRend = glowGO.GetComponent<Renderer>();
         if (gRend != null)
         {
-            var sh = Shader.Find("Universal Render Pipeline/Lit");
+            var sh = Shader.Find("Universal Render Pipeline/Unlit");
+            if (sh == null) sh = Shader.Find("Unlit/Color");
             if (sh == null) sh = Shader.Find("Standard");
             var mat = new Material(sh);
             Color sc = new Color(1f, 0.95f, 0.8f);
-            mat.SetFloat("_Surface", 1f);
-            mat.SetFloat("_Blend", 1f);
+            mat.SetFloat("_Blend", 2f);
             mat.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.One);
             mat.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.One);
             mat.SetFloat("_ZWrite", 0f);
             mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
-            mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-            mat.SetColor("_BaseColor", sc * 1.5f);
-            if (mat.HasProperty("_EmissionColor")) { mat.EnableKeyword("_EMISSION"); mat.SetColor("_EmissionColor", sc * 3f); }
+            mat.SetColor("_BaseColor", sc * 0.45f);
+            if (mat.HasProperty("_EmissionColor")) { mat.EnableKeyword("_EMISSION"); mat.SetColor("_EmissionColor", sc * 0.8f); }
             gRend.material = mat;
             gRend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         }
@@ -419,10 +420,14 @@ public class SpaceStreamer : MonoBehaviour
             planet.transform.localPosition = offset;
             float pScale = Lerp(50f, 120f, (float)rng.NextDouble());
             planet.transform.localScale = Vector3.one * pScale;
-            var pCT = planet.AddComponent<CompassTarget>();
-            pCT.displayColor = new Color(0.3f, 0.6f, 1f);
-            pCT.displayName = "Planet";
+            if (planet.GetComponent<CompassTarget>() == null)
+            {
+                var pCT = planet.AddComponent<CompassTarget>();
+                pCT.displayColor = new Color(0.3f, 0.6f, 1f);
+                pCT.displayName = "Planet";
+            }
             var gg = planet.GetComponent<GasGiant>();
+            if (gg == null) gg = planet.AddComponent<GasGiant>();
             if (gg != null)
             {
                 gg.useOrbitCenter = true;

@@ -26,7 +26,7 @@ public class GasGiant : MonoBehaviour
         _rb.useGravity = false;
         foreach (var c in GetComponents<Collider>()) c.isTrigger = true;
         foreach (var c in GetComponentsInChildren<Collider>()) c.isTrigger = true;
-        _rb.linearDamping = 0.2f;
+        _rb.linearDamping = 0f;
         _rb.angularDamping = 0.1f;
         _rb.mass = 10000f;
         _rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;

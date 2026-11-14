@@ -42,7 +42,6 @@ public class MainScene : MonoBehaviour {
     private Vector3 sunRotation = new Vector3(25, 300, 0);
     private float moveScale = 2.5f;
     private List<Parameter> parameters = new List<Parameter>();
-    private int timeToAutoDetail=100;
     private bool autoDetail = false;
     private bool displayMenu = true;
 

@@ -17,7 +17,7 @@ RenderSettings:
   m_Fog: 1
   m_FogColor: {r: 0.3, g: 0.2, b: 0.5, a: 1}
   m_FogMode: 2
-  m_FogDensity: 0.015
+  m_FogDensity: 0.00005
   m_LinearFogStart: 0
   m_LinearFogEnd: 300
   m_AmbientSkyColor: {r: 0.05, g: 0.05, b: 0.08, a: 1}
@@ -338,8 +338,8 @@ Camera:
     y: 0
     width: 1
     height: 1
-  near clip plane: 0.3
-  far clip plane: 1000
+  near clip plane: 3
+  far clip plane: 400000
   field of view: 60
   orthographic: 0
   orthographic size: 5
@@ -1339,10 +1339,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 26a670bbf995459ab8b2e687b62d3576, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::StarField
-  starCount: 150
-  minDistance: 200
-  maxDistance: 1500
-  lodDistance: 120
+  starCount: 400
+  minDistance: 40000
+  maxDistance: 250000
+  lodDistance: 80000
   starNearPrefab: {fileID: 0}
 --- !u!4 &1306425931
 Transform:
