@@ -186,14 +186,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CompassHUD3D
   horizontalBar: {fileID: 1197755793}
   verticalBar: {fileID: 391995263}
-  horizontalPin: {fileID: 0}
-  verticalPin: {fileID: 0}
+  horizontalPin: {fileID: 985615522}
+  verticalPin: {fileID: 556649571}
   starHorizontalPin: {fileID: 0}
   starVerticalPin: {fileID: 0}
   targetLabel: {fileID: 1850921757}
   maxAngle: 90
-  barWidth: 576
-  barHeight: 324
+  barWidth: 1920
+  barHeight: 1080
 --- !u!114 &303144580
 MonoBehaviour:
   m_ObjectHideFlags: 0

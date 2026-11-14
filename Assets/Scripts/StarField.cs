@@ -7,10 +7,10 @@ using UnityEngine;
 /// </summary>
 public class StarField : MonoBehaviour
 {
-    public int starCount = 150;
-    public float minDistance = 200f;
-    public float maxDistance = 1500f;
-    public float lodDistance = 400f;
+    public int starCount = 300;
+    public float minDistance = 50000f;
+    public float maxDistance = 500000f;
+    public float lodDistance = 100000f;
     public GameObject starNearPrefab; // full star model (optional)
 
     private Transform _target;
@@ -51,15 +51,27 @@ public class StarField : MonoBehaviour
         _stars = new GameObject[starCount];
         _lastCenter = _target != null ? _target.position : Vector3.zero;
 
+        float minY = float.MaxValue;
+        float maxY = float.MinValue;
+
         for (int i = 0; i < starCount; i++)
         {
             _stars[i] = CreateStar(_lastCenter);
+            float y = _stars[i].transform.position.y;
+            minY = Mathf.Min(minY, y);
+            maxY = Mathf.Max(maxY, y);
         }
+
+        Debug.Log($"[StarField] Spawned {starCount} stars. Y range: {minY:F0} to {maxY:F0} (spread: {maxY - minY:F0}m)");
     }
 
     private void RepositionStars()
     {
         if (_stars == null || _target == null) return;
+        
+        float minY = float.MaxValue;
+        float maxY = float.MinValue;
+        
         for (int i = 0; i < _stars.Length; i++)
         {
             if (_stars[i] == null) continue;
@@ -67,7 +79,13 @@ public class StarField : MonoBehaviour
             Vector3 dir = Random.onUnitSphere;
             float dist = Random.Range(minDistance, maxDistance);
             _stars[i].transform.position = _target.position + dir * dist;
+            
+            float y = _stars[i].transform.position.y;
+            minY = Mathf.Min(minY, y);
+            maxY = Mathf.Max(maxY, y);
         }
+        
+        Debug.Log($"[StarField] Repositioned stars. Y range: {minY:F0} to {maxY:F0} (spread: {maxY - minY:F0}m)");
     }
 
     private GameObject CreateStar(Vector3 center)
@@ -87,7 +105,7 @@ public class StarField : MonoBehaviour
         var billboard = GameObject.CreatePrimitive(PrimitiveType.Quad);
         billboard.name = "Star Glow";
         billboard.transform.SetParent(farGO.transform, false);
-        billboard.transform.localScale = Vector3.one * Random.Range(2f, 6f);
+        billboard.transform.localScale = Vector3.one * Random.Range(50f, 150f);
         var bcol = billboard.GetComponent<Collider>();
         if (bcol != null) Object.Destroy(bcol);
         var brend = billboard.GetComponent<Renderer>();
@@ -122,8 +140,8 @@ public class StarField : MonoBehaviour
         var light = farGO.AddComponent<Light>();
         light.type = LightType.Point;
         light.color = new Color(1f, 0.95f, 0.8f);
-        light.intensity = 2f;
-        light.range = 50f;
+        light.intensity = 5f;
+        light.range = 5000f;
 
         // Near representation: full star (only if prefab provided)
         GameObject nearGO = null;
@@ -132,7 +150,7 @@ public class StarField : MonoBehaviour
             nearGO = (GameObject)Instantiate(starNearPrefab);
             nearGO.name = "Star Near";
             nearGO.transform.SetParent(parent.transform, false);
-            nearGO.transform.localScale = Vector3.one * Random.Range(8f, 15f);
+            nearGO.transform.localScale = Vector3.one * Random.Range(500f, 1200f);
         }
         else
         {
@@ -140,7 +158,7 @@ public class StarField : MonoBehaviour
             nearGO = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             nearGO.name = "Star Near";
             nearGO.transform.SetParent(parent.transform, false);
-            nearGO.transform.localScale = Vector3.one * Random.Range(8f, 15f);
+            nearGO.transform.localScale = Vector3.one * Random.Range(500f, 1200f);
             var rend = nearGO.GetComponent<Renderer>();
             if (rend != null)
             {

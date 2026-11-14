@@ -26,9 +26,24 @@ public class StarLOD : MonoBehaviour
 
     private void UpdateLOD()
     {
-        if (_cam == null) return;
+        if (_cam == null) 
+        {
+            _cam = Camera.main != null ? Camera.main.transform : null;
+            if (_cam == null) 
+            {
+                Debug.LogWarning("[StarLOD] No camera found! Tag a camera as 'MainCamera'");
+                return;
+            }
+        }
+        
         float dist = Vector3.Distance(transform.position, _cam.position);
         bool showNear = dist < lodDistance;
+
+        // Debug: log distance periodically
+        if (Time.frameCount % 60 == 0)
+        {
+            Debug.Log($"[StarLOD] {gameObject.name}: dist={dist:F0}m, lodDistance={lodDistance}m, showNear={showNear}, farActive={farRepresentation?.activeSelf}, nearActive={nearRepresentation?.activeSelf}");
+        }
 
         if (farRepresentation != null) farRepresentation.SetActive(!showNear);
         if (nearRepresentation != null) nearRepresentation.SetActive(showNear);

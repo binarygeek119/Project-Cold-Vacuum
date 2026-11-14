@@ -1,12 +1,12 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.InputSystem;
 using System.Collections.Generic;
 
 /// <summary>
 /// 3D compass (Skyrim-style) with horizontal bar (top) and vertical bar (left).
-/// Bars are fixed in place; pins rotate like gauge needles to point at targets.
-/// Supports MULTIPLE pins (one per target) plus a dedicated yellow STAR pin.
-/// Each pin is colored to match its target object.
+/// Auto-detects stars and shows yellow pins. Supports filters and controller input.
+/// D-pad UP: cycle filters | D-pad DOWN: toggle compose on/off
 /// </summary>
 public class CompassHUD3D : MonoBehaviour
 {
@@ -14,37 +14,173 @@ public class CompassHUD3D : MonoBehaviour
     public RawImage verticalBar;
     public RectTransform horizontalPin;   // template (hidden) for spawning pins
     public RectTransform verticalPin;
-    public RectTransform starHorizontalPin; // dedicated yellow star pin (template)
-    public RectTransform starVerticalPin;
     public Text targetLabel;
 
     public float maxAngle = 90f;
     public float barWidth = 400f;
     public float barHeight = 400f;
+    public float fadeZone = 0.2f;  // 20% of bar length for edge fade
+    public int maxStarsToTrack = 5;  // Track up to N closest stars
+
+    public enum CompassFilter { Stars }
 
     private SpaceStreamer _streamer;
     private List<PinEntry> _pins = new List<PinEntry>();
-    private Transform _nearestStar;
+    private bool _composeEnabled = true;
+    private CompassFilter _currentFilter = CompassFilter.Stars;
+    private float _inputCooldown = 0f;
+    private const float INPUT_COOLDOWN_TIME = 0.3f;
+    private bool _lastShouldShow = true;
 
     private class PinEntry
     {
         public Transform target;
         public RectTransform hPin;
         public RectTransform vPin;
+        public bool isStar;
+        public Color pinColor;
+        public string systemCode;
+        public Text hLabel;
+        public Text vLabel;
     }
 
     void Start()
     {
-        _streamer = FindFirstObjectByType<SpaceStreamer>();
+        _streamer = FindAnyObjectByType<SpaceStreamer>();
         // Hide templates
         if (horizontalPin != null) horizontalPin.gameObject.SetActive(false);
         if (verticalPin != null) verticalPin.gameObject.SetActive(false);
-        if (starHorizontalPin != null) starHorizontalPin.gameObject.SetActive(false);
-        if (starVerticalPin != null) starVerticalPin.gameObject.SetActive(false);
+    }
+
+    enum FadeDirection { Horizontal, Vertical }
+
+    string GenerateStarCode()
+    {
+        const string letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        string code = "";
+        // 3 random letters
+        for (int i = 0; i < 3; i++)
+            code += letters[Random.Range(0, letters.Length)];
+        // 3 random numbers
+        for (int i = 0; i < 3; i++)
+            code += Random.Range(0, 10).ToString();
+        return code;
+    }
+
+    void AddBarEdgeFade(RawImage bar, FadeDirection direction)
+    {
+        if (bar == null) return;
+
+        // Create gradient texture
+        Texture2D gradTex;
+        int fadePixels;
+        
+        if (direction == FadeDirection.Horizontal)
+        {
+            int width = 256;
+            fadePixels = Mathf.RoundToInt(width * fadeZone);
+            gradTex = new Texture2D(width, 1, TextureFormat.RGBA32, false);
+
+            for (int x = 0; x < width; x++)
+            {
+                float alpha = 1f;
+                if (x < fadePixels)
+                    alpha = (float)x / fadePixels;
+                else if (x > width - fadePixels)
+                    alpha = (float)(width - x) / fadePixels;
+
+                gradTex.SetPixel(x, 0, new Color(1f, 1f, 1f, alpha));
+            }
+        }
+        else
+        {
+            int height = 256;
+            fadePixels = Mathf.RoundToInt(height * fadeZone);
+            gradTex = new Texture2D(1, height, TextureFormat.RGBA32, false);
+
+            for (int y = 0; y < height; y++)
+            {
+                float alpha = 1f;
+                if (y < fadePixels)
+                    alpha = (float)y / fadePixels;
+                else if (y > height - fadePixels)
+                    alpha = (float)(height - y) / fadePixels;
+
+                gradTex.SetPixel(0, y, new Color(1f, 1f, 1f, alpha));
+            }
+        }
+        gradTex.Apply();
+        gradTex.wrapMode = TextureWrapMode.Clamp;
+
+        // Create overlay as sibling of bar (same parent) to avoid layout issues
+        var overlayGO = new GameObject("BarFadeOverlay");
+        overlayGO.transform.SetParent(bar.transform.parent, false);
+
+        var overlayRawImage = overlayGO.AddComponent<RawImage>();
+        overlayRawImage.texture = gradTex;
+        overlayRawImage.color = Color.white;
+        overlayRawImage.raycastTarget = false;
+
+        // Match overlay position and size to the bar
+        var overlayRT = overlayGO.GetComponent<RectTransform>();
+        var barRT = bar.GetComponent<RectTransform>();
+        
+        // Copy bar's anchors and position
+        overlayRT.anchorMin = barRT.anchorMin;
+        overlayRT.anchorMax = barRT.anchorMax;
+        overlayRT.anchoredPosition = barRT.anchoredPosition;
+        overlayRT.sizeDelta = barRT.sizeDelta;
+        overlayRT.pivot = barRT.pivot;
     }
 
     void Update()
     {
+        HandleControllerInput();
+
+        // Determine if compass should be visible
+        bool shouldShow = _composeEnabled;
+
+        // Debug: log state changes
+        if (_lastShouldShow != shouldShow)
+        {
+            Debug.Log($"[CompassHUD] Compass visibility changed: {shouldShow} (enabled={_composeEnabled}, filter={_currentFilter})");
+            _lastShouldShow = shouldShow;
+        }
+
+        // Show/hide bars
+        if (horizontalBar != null)
+        {
+            bool wasActive = horizontalBar.gameObject.activeSelf;
+            horizontalBar.gameObject.SetActive(shouldShow);
+            if (wasActive != shouldShow)
+            {
+                Debug.Log($"[CompassHUD] Horizontal bar {(shouldShow ? "shown" : "hidden")}");
+            }
+        }
+        else
+        {
+            Debug.LogWarning("[CompassHUD] horizontalBar is null!");
+        }
+        if (verticalBar != null)
+        {
+            bool wasActive = verticalBar.gameObject.activeSelf;
+            verticalBar.gameObject.SetActive(shouldShow);
+            if (wasActive != shouldShow)
+            {
+                Debug.Log($"[CompassHUD] Vertical bar {(shouldShow ? "shown" : "hidden")}");
+            }
+        }
+        else
+        {
+            Debug.LogWarning("[CompassHUD] verticalBar is null!");
+        }
+
+        if (!shouldShow)
+        {
+            HideAllPins();
+            return;
+        }
+
         if (horizontalBar == null || verticalBar == null) return;
 
         var ship = GameObject.Find("Player Ship");
@@ -61,45 +197,53 @@ public class CompassHUD3D : MonoBehaviour
             inSystem = _streamer.IsInStarSystem();
         }
 
-        // Find all targets in current system
-        var targets = new List<Transform>();
-        if (inSystem)
+        // Find targets based on current filter
+        var targets = new List<TargetInfo>();
+
+        if (_currentFilter == CompassFilter.Stars)
         {
-            var allTargets = FindObjectsByType<CompassTarget>(FindObjectsSortMode.None);
-            foreach (var ct in allTargets)
+            // Auto-detect all stars near the ship
+            var allStars = FindObjectsByType<StarLOD>();
+            foreach (var star in allStars)
             {
-                if (ct == null) continue;
-                float distToSystem = Vector3.Distance(ct.transform.position, systemCenter);
-                if (systemRadius > 0f && distToSystem > systemRadius) continue;
-                targets.Add(ct.transform);
+                if (star == null || star.transform == null) continue;
+                float distToShip = Vector3.Distance(ship.transform.position, star.transform.position);
+                // Only track stars within reasonable distance
+                if (distToShip > 100000f) continue;
+                targets.Add(new TargetInfo { transform = star.transform, isStar = true, distance = distToShip });
             }
+
+            // Also check for objects with "Star" in name (fallback)
+            var allObjects = FindObjectsByType<Transform>();
+            foreach (var obj in allObjects)
+            {
+                if (obj == null) continue;
+                if (obj.GetComponent<StarLOD>() != null) continue; // Already added
+                if (!obj.name.Contains("Star")) continue;
+
+                float distToShip = Vector3.Distance(ship.transform.position, obj.position);
+                if (distToShip > 100000f) continue;
+                targets.Add(new TargetInfo { transform = obj, isStar = true, distance = distToShip });
+            }
+
+            // Sort by distance and take closest N stars
+            targets.Sort((a, b) => a.distance.CompareTo(b.distance));
+            if (targets.Count > maxStarsToTrack)
+                targets = targets.GetRange(0, maxStarsToTrack);
         }
 
-        // Find nearest star in current system
-        _nearestStar = null;
-        float minStarDist = float.MaxValue;
+        // Convert to Transform list for SyncPins
+        var targetTransforms = new List<Transform>();
         foreach (var t in targets)
-        {
-            if (t == null) continue;
-            bool isStar = t.name.Contains("Star") || t.GetComponent<StarLOD>() != null;
-            if (!isStar) continue;
-            float d = Vector3.Distance(ship.transform.position, t.position);
-            if (d < minStarDist) { minStarDist = d; _nearestStar = t; }
-        }
+            targetTransforms.Add(t.transform);
 
         // Sync pins: create new, remove stale
-        SyncPins(targets);
+        SyncPins(targetTransforms, targets);
 
         // Hide all pins when no targets
         if (targets.Count == 0)
         {
-            foreach (var entry in _pins)
-            {
-                if (entry.hPin != null) entry.hPin.gameObject.SetActive(false);
-                if (entry.vPin != null) entry.vPin.gameObject.SetActive(false);
-            }
-            if (starHorizontalPin != null) starHorizontalPin.gameObject.SetActive(false);
-            if (starVerticalPin != null) starVerticalPin.gameObject.SetActive(false);
+            HideAllPins();
             if (targetLabel != null) targetLabel.gameObject.SetActive(false);
             return;
         }
@@ -123,90 +267,68 @@ public class CompassHUD3D : MonoBehaviour
             float hAngle = Vector3.SignedAngle(forward, horizDir, Vector3.up);
             float vAngle = Mathf.Asin(Mathf.Clamp(dir.y, -1f, 1f)) * Mathf.Rad2Deg;
 
+            Color pinColor = entry.isStar ? Color.yellow : entry.pinColor;
+
+            // Horizontal pin: slide left/right based on hAngle
             bool hVisible = Mathf.Abs(hAngle) <= maxAngle;
             entry.hPin.gameObject.SetActive(hVisible);
+            if (entry.hLabel != null) entry.hLabel.gameObject.SetActive(hVisible);
             if (hVisible)
             {
-                entry.hPin.anchoredPosition = Vector2.zero;
-                entry.hPin.localRotation = Quaternion.Euler(0f, 0f, -hAngle);
+                float normalizedAngle = hAngle / maxAngle;
+                float xPos = normalizedAngle * (barWidth * 0.5f);
+                entry.hPin.anchoredPosition = new Vector2(xPos, 0f);
+                entry.hPin.localRotation = Quaternion.identity;
+
+                // Calculate edge fade once
+                float edgeFade = CalculateEdgeFade(normalizedAngle);
+
+                // Position label below the horizontal bar
+                if (entry.hLabel != null)
+                {
+                    entry.hLabel.rectTransform.anchoredPosition = new Vector2(xPos, -50f);
+                    entry.hLabel.color = new Color(1f, 1f, 1f, edgeFade);
+                }
+
+                var hImg = entry.hPin.GetComponent<Image>();
+                if (hImg != null) hImg.color = new Color(pinColor.r, pinColor.g, pinColor.b, pinColor.a * edgeFade);
             }
 
+            // Vertical pin: slide up/down based on vAngle
             bool vVisible = Mathf.Abs(vAngle) <= maxAngle;
             entry.vPin.gameObject.SetActive(vVisible);
+            if (entry.vLabel != null) entry.vLabel.gameObject.SetActive(vVisible);
             if (vVisible)
             {
-                entry.vPin.anchoredPosition = Vector2.zero;
-                entry.vPin.localRotation = Quaternion.Euler(0f, 0f, vAngle);
-            }
+                float normalizedAngle = vAngle / maxAngle;
+                float yPos = normalizedAngle * (barHeight * 0.5f);
+                entry.vPin.anchoredPosition = new Vector2(0f, yPos);
+                entry.vPin.localRotation = Quaternion.identity;
 
-            var ct = entry.target.GetComponent<CompassTarget>();
-            Color pinColor = ct != null ? ct.displayColor : Color.white;
-            var hImg = entry.hPin.GetComponent<Image>();
-            if (hImg != null) hImg.color = pinColor;
-            var vImg = entry.vPin.GetComponent<Image>();
-            if (vImg != null) vImg.color = pinColor;
-        }
+                // Calculate edge fade once
+                float edgeFade = CalculateEdgeFade(normalizedAngle);
 
-        // Update dedicated yellow STAR pins
-        if (_nearestStar != null)
-        {
-            Vector3 toStar = _nearestStar.position - ship.transform.position;
-            if (toStar.sqrMagnitude > 0.01f)
-            {
-                Vector3 starDir = toStar.normalized;
-                Vector3 starHoriz = new Vector3(starDir.x, 0f, starDir.z);
-                if (starHoriz.sqrMagnitude > 0.001f) starHoriz.Normalize();
-                float starHAngle = Vector3.SignedAngle(forward, starHoriz, Vector3.up);
-                float starVAngle = Mathf.Asin(Mathf.Clamp(starDir.y, -1f, 1f)) * Mathf.Rad2Deg;
-
-                if (starHorizontalPin != null)
+                // Position label to the right of the vertical bar
+                if (entry.vLabel != null)
                 {
-                    bool vis = Mathf.Abs(starHAngle) <= maxAngle;
-                    starHorizontalPin.gameObject.SetActive(vis);
-                    if (vis)
-                    {
-                        starHorizontalPin.anchoredPosition = Vector2.zero;
-                        starHorizontalPin.localRotation = Quaternion.Euler(0f, 0f, -starHAngle);
-                        var img = starHorizontalPin.GetComponent<Image>();
-                        if (img != null) img.color = Color.yellow;
-                    }
+                    entry.vLabel.rectTransform.anchoredPosition = new Vector2(140f, yPos);
+                    entry.vLabel.color = new Color(1f, 1f, 1f, edgeFade);
                 }
-                if (starVerticalPin != null)
-                {
-                    bool vis = Mathf.Abs(starVAngle) <= maxAngle;
-                    starVerticalPin.gameObject.SetActive(vis);
-                    if (vis)
-                    {
-                        starVerticalPin.anchoredPosition = Vector2.zero;
-                        starVerticalPin.localRotation = Quaternion.Euler(0f, 0f, starVAngle);
-                        var img = starVerticalPin.GetComponent<Image>();
-                        if (img != null) img.color = Color.yellow;
-                    }
-                }
+
+                var vImg = entry.vPin.GetComponent<Image>();
+                if (vImg != null) vImg.color = new Color(pinColor.r, pinColor.g, pinColor.b, pinColor.a * edgeFade);
             }
         }
-        else
-        {
-            if (starHorizontalPin != null) starHorizontalPin.gameObject.SetActive(false);
-            if (starVerticalPin != null) starVerticalPin.gameObject.SetActive(false);
-        }
 
-        // Label: show nearest target (non-star preferred, or star)
+        // Label: show nearest target
         if (targetLabel != null)
         {
             if (_pins.Count > 0 && _pins[0].target != null)
             {
                 targetLabel.gameObject.SetActive(true);
-                var ct = _pins[0].target.GetComponent<CompassTarget>();
-                string name = ct != null && !string.IsNullOrEmpty(ct.displayName) ? ct.displayName : _pins[0].target.name;
+                string name = _pins[0].isStar ? "Star" : _pins[0].target.name;
                 float dist = Vector3.Distance(ship.transform.position, _pins[0].target.position);
                 targetLabel.text = name + "  " + Mathf.RoundToInt(dist) + "m";
-            }
-            else if (_nearestStar != null)
-            {
-                targetLabel.gameObject.SetActive(true);
-                float dist = Vector3.Distance(ship.transform.position, _nearestStar.position);
-                targetLabel.text = "Star  " + Mathf.RoundToInt(dist) + "m";
             }
             else
             {
@@ -215,44 +337,154 @@ public class CompassHUD3D : MonoBehaviour
         }
     }
 
-    private void SyncPins(List<Transform> targets)
+    void HandleControllerInput()
     {
+        if (_inputCooldown > 0f)
+        {
+            _inputCooldown -= Time.deltaTime;
+            return;
+        }
+
+        // D-pad UP: cycle filters
+        bool dpadUp = false;
+        if (Keyboard.current != null && Keyboard.current.upArrowKey.wasPressedThisFrame)
+            dpadUp = true;
+        if (Gamepad.current != null && Gamepad.current.dpad.up.wasPressedThisFrame)
+            dpadUp = true;
+            
+        if (dpadUp)
+        {
+            _currentFilter = (CompassFilter)(((int)_currentFilter + 1) % System.Enum.GetValues(typeof(CompassFilter)).Length);
+            _inputCooldown = INPUT_COOLDOWN_TIME;
+            Debug.Log($"[CompassHUD] Filter changed to: {_currentFilter}");
+        }
+
+        // D-pad DOWN: toggle compose on/off
+        bool dpadDown = false;
+        if (Keyboard.current != null && Keyboard.current.downArrowKey.wasPressedThisFrame)
+            dpadDown = true;
+        if (Gamepad.current != null && Gamepad.current.dpad.down.wasPressedThisFrame)
+            dpadDown = true;
+            
+        if (dpadDown)
+        {
+            _composeEnabled = !_composeEnabled;
+            _inputCooldown = INPUT_COOLDOWN_TIME;
+            Debug.Log($"[CompassHUD] Compose {( _composeEnabled ? "enabled" : "disabled")}");
+        }
+    }
+
+    void HideAllPins()
+    {
+        foreach (var entry in _pins)
+        {
+            if (entry.hPin != null) entry.hPin.gameObject.SetActive(false);
+            if (entry.vPin != null) entry.vPin.gameObject.SetActive(false);
+            if (entry.hLabel != null) entry.hLabel.gameObject.SetActive(false);
+            if (entry.vLabel != null) entry.vLabel.gameObject.SetActive(false);
+        }
+        if (targetLabel != null) targetLabel.gameObject.SetActive(false);
+    }
+
+    float CalculateEdgeFade(float normalizedPosition)
+    {
+        float absPos = Mathf.Abs(normalizedPosition);
+        float fadeStart = 1f - fadeZone;
+
+        if (absPos <= fadeStart)
+            return 1f;
+        else
+            return 1f - (absPos - fadeStart) / fadeZone;
+    }
+
+    private void SyncPins(List<Transform> targets, List<TargetInfo> targetInfos)
+    {
+        // Remove stale pins
         for (int i = _pins.Count - 1; i >= 0; i--)
         {
             if (_pins[i].target == null || !targets.Contains(_pins[i].target))
             {
                 if (_pins[i].hPin != null) Destroy(_pins[i].hPin.gameObject);
                 if (_pins[i].vPin != null) Destroy(_pins[i].vPin.gameObject);
+                if (_pins[i].hLabel != null) Destroy(_pins[i].hLabel.gameObject);
+                if (_pins[i].vLabel != null) Destroy(_pins[i].vLabel.gameObject);
                 _pins.RemoveAt(i);
             }
         }
 
-        foreach (var t in targets)
+        // Add new pins
+        foreach (var info in targetInfos)
         {
             bool exists = false;
             foreach (var entry in _pins)
             {
-                if (entry.target == t) { exists = true; break; }
+                if (entry.target == info.transform) { exists = true; break; }
             }
             if (exists) continue;
 
             RectTransform hPin = null;
+            Text hLabel = null;
             if (horizontalPin != null)
             {
                 var hGO = Instantiate(horizontalPin.gameObject, horizontalPin.parent);
                 hGO.SetActive(true);
                 hPin = hGO.GetComponent<RectTransform>();
+
+                // Create label for horizontal pin
+                hLabel = CreatePinLabel(horizontalPin.parent, info.transform.name);
             }
 
             RectTransform vPin = null;
+            Text vLabel = null;
             if (verticalPin != null)
             {
                 var vGO = Instantiate(verticalPin.gameObject, verticalPin.parent);
                 vGO.SetActive(true);
                 vPin = vGO.GetComponent<RectTransform>();
+
+                // Create label for vertical pin
+                vLabel = CreatePinLabel(verticalPin.parent, info.transform.name);
             }
 
-            _pins.Add(new PinEntry { target = t, hPin = hPin, vPin = vPin });
+            _pins.Add(new PinEntry
+            {
+                target = info.transform,
+                hPin = hPin,
+                vPin = vPin,
+                isStar = info.isStar,
+                pinColor = info.isStar ? Color.yellow : Color.white,
+                systemCode = GenerateStarCode(),
+                hLabel = hLabel,
+                vLabel = vLabel
+            });
         }
+    }
+
+    Text CreatePinLabel(Transform parent, string targetName)
+    {
+        var labelGO = new GameObject("PinLabel");
+        labelGO.transform.SetParent(parent, false);
+
+        var label = labelGO.AddComponent<Text>();
+        label.text = GenerateStarCode();
+        label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        label.fontSize = 32;
+        label.color = Color.white;
+        label.alignment = TextAnchor.MiddleCenter;
+        label.horizontalOverflow = HorizontalWrapMode.Overflow;
+        label.verticalOverflow = VerticalWrapMode.Overflow;
+
+        var labelRT = labelGO.GetComponent<RectTransform>();
+        labelRT.sizeDelta = new Vector2(200, 50);
+        labelRT.anchoredPosition = Vector2.zero;
+
+        return label;
+    } // end CreatePinLabel
+
+    class TargetInfo
+    {
+        public Transform transform;
+        public bool isStar;
+        public float distance;
     }
 }

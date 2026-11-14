@@ -10,6 +10,6 @@ public class NebulaCloud : MonoBehaviour
 
     void Update()
     {
-        transform.Rotate(rotateAxis.normalized, rotateSpeed * Time.deltaTime, Space.Self);
+        transform.Rotate(rotateAxis.normalized, rotateSpeed * Time.deltaTime, UnityEngine.Space.Self);
     }
 }

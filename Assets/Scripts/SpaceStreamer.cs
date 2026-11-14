@@ -419,7 +419,6 @@ public class SpaceStreamer : MonoBehaviour
         // Station (rare, per system) - spawn in system center chunk only
         if (sys.hasStation && stationPrefab != null)
         {
-            Vector3Int sysChunk = WorldToChunk(sys.center);
             if (coord == sysChunk)
             {
                 // Use system-seeded RNG for deterministic station position
@@ -444,7 +443,6 @@ public class SpaceStreamer : MonoBehaviour
         // Enemy Viper (per system) - spawn in system center chunk only
         if (sys.hasEnemy && enemyShipPrefab != null)
         {
-            Vector3Int sysChunk = WorldToChunk(sys.center);
             if (coord == sysChunk)
             {
                 // Use system-seeded RNG for deterministic enemy position
@@ -470,7 +468,6 @@ public class SpaceStreamer : MonoBehaviour
         // Nebula cloud (only in systems with nebula, and rare) - spawn in system center chunk only
         if (sys.hasNebula && rng.NextDouble() < 0.3f)
         {
-            Vector3Int sysChunk = WorldToChunk(sys.center);
             if (coord == sysChunk)
             {
                 var neb = BuildNebula(rng);

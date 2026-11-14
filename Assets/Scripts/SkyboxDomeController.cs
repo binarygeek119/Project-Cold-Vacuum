@@ -27,7 +27,7 @@ public class SkyboxDomeController : MonoBehaviour
 
     void Start()
     {
-        _streamer = FindFirstObjectByType<SpaceStreamer>();
+        _streamer = FindAnyObjectByType<SpaceStreamer>();
         var rend = GetComponent<Renderer>();
         if (rend != null) _mat = rend.material;
         transform.position = Vector3.zero;

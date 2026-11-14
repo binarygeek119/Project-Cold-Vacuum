@@ -72,7 +72,7 @@ public class CompassHUD : MonoBehaviour
 
         // Candidate targets: GasGiant, StarLOD, Station, EnemyShip, or anything with "Star"/"Planet" in name
         var candidates = new List<Transform>();
-        var allTransforms = UnityEngine.Object.FindObjectsByType<Transform>(UnityEngine.FindObjectsSortMode.None);
+        var allTransforms = UnityEngine.Object.FindObjectsByType<Transform>();
         foreach (var tr in allTransforms)
         {
             var go = tr.gameObject;
