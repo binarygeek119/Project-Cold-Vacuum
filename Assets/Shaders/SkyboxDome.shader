@@ -15,7 +15,8 @@ Shader "Custom/SkyboxDome"
             Name "ForwardUnlit"
             Tags { "LightMode" = "UniversalForward" }
             Cull Off
-            ZWrite On
+            ZWrite Off
+            ZTest Always
             HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag

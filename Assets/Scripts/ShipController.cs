@@ -22,7 +22,6 @@ public class ShipController : MonoBehaviour
     public float yawTorque = 15f;
     public float rollTorque = 30f;
     public float angularDamping = 6f;
-    public float pitchLimit = 80f;
 
     [Header("Banking")]
     public float maxBank = 80f;
