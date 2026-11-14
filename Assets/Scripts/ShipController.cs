@@ -10,8 +10,10 @@ public class ShipController : MonoBehaviour
     [Header("Thrust")]
     public float thrustForce = 25f;
     public float brakeForce = 40f;
-    public float maxSpeed = 50f;
-    public float hyperDriveMultiplier = 10f;
+    public float maxSpeed = 120f;
+    public float hyperCruiseSpeed = 900f;
+    public float hyperSpoolTime = 2.5f;
+    private float _targetSpeed = 0f;
     private bool _hyperDriveActive = false;
     public bool HyperDriveActive => _hyperDriveActive;
 
@@ -123,34 +125,22 @@ public class ShipController : MonoBehaviour
         }
         if (hyperToggle) _hyperDriveActive = !_hyperDriveActive;
 
-        // --- thrust ---
-        float speedMult = _hyperDriveActive ? hyperDriveMultiplier : 1f;
-        if (thrust > triggerDeadzone)
-        {
-            _rb.AddForce(transform.forward * thrust * thrustForce * speedMult, ForceMode.Acceleration);
-        }
-        else if (brake > triggerDeadzone)
-        {
-            // Slow down first, then reverse at slower rate
-            if (_rb.linearVelocity.sqrMagnitude > 0.5f)
-            {
-                _rb.AddForce(-_rb.linearVelocity.normalized * brake * brakeForce, ForceMode.Acceleration);
-            }
-            else
-            {
-                // fully slowed: apply reverse thrust (slower than forward)
-                _rb.AddForce(-transform.forward * brake * thrustForce * 0.4f * speedMult, ForceMode.Acceleration);
-            }
-        }
+        // --- speed target (coast, don't snap to zero) ---
+        float want;
+        if (brake > triggerDeadzone) want = 0f;
+        else if (thrust > triggerDeadzone)
+            want = _hyperDriveActive ? hyperCruiseSpeed : maxSpeed;
         else
-        {
-            _rb.linearVelocity = Vector3.zero;
-        }
+            want = _hyperDriveActive ? hyperCruiseSpeed * 0.75f : _targetSpeed; // coast
 
-        // --- speed clamp ---
-        float currentMaxSpeed = maxSpeed * speedMult;
-        if (_rb.linearVelocity.magnitude > currentMaxSpeed)
-            _rb.linearVelocity = _rb.linearVelocity.normalized * currentMaxSpeed;
+        float rate = (_hyperDriveActive ? hyperCruiseSpeed / hyperSpoolTime : maxSpeed / 1.5f) * Time.fixedDeltaTime;
+        _targetSpeed = Mathf.MoveTowards(_targetSpeed, want, rate);
+
+        Vector3 fwd = transform.forward;
+        Vector3 v = _rb.linearVelocity;
+        float fwdSpeed = Vector3.Dot(v, fwd);
+        Vector3 lateral = v - fwd * fwdSpeed;
+        _rb.linearVelocity = fwd * _targetSpeed + lateral * 0.9f;
 
         // --- steering torque ---
         _rb.AddTorque(transform.right * pitchInput * pitchTorque, ForceMode.Acceleration);

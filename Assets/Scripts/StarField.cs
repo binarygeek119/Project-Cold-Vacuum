@@ -16,6 +16,7 @@ public class StarField : MonoBehaviour
     private Transform _target;
     private GameObject[] _stars;
     private Vector3 _lastCenter;
+    private Vector3 _lastMoveDir = Vector3.forward;
 
     void Start()
     {
@@ -38,10 +39,11 @@ public class StarField : MonoBehaviour
             if (_target == null) return;
         }
 
-        // Reposition field if ship moved far
-        if (Vector3.Distance(_target.position, _lastCenter) > 100f)
+        Vector3 move = _target.position - _lastCenter;
+        if (move.sqrMagnitude > 20000f * 20000f)
         {
-            RepositionStars();
+            if (move.sqrMagnitude > 0.001f) _lastMoveDir = move.normalized;
+            RepositionStars(_lastMoveDir);
             _lastCenter = _target.position;
         }
     }
@@ -65,27 +67,35 @@ public class StarField : MonoBehaviour
         Debug.Log($"[StarField] Spawned {starCount} stars. Y range: {minY:F0} to {maxY:F0} (spread: {maxY - minY:F0}m)");
     }
 
-    private void RepositionStars()
+    private void RepositionStars(Vector3 moveDir)
     {
         if (_stars == null || _target == null) return;
-        
+
         float minY = float.MaxValue;
         float maxY = float.MinValue;
-        
+
         for (int i = 0; i < _stars.Length; i++)
         {
             if (_stars[i] == null) continue;
-            // Move star to a new random position around the new center
+            // Only reposition stars that fell behind the ship
+            Vector3 toStar = _stars[i].transform.position - _target.position;
+            if (Vector3.Dot(toStar, moveDir) >= 0f) 
+            {
+                float y = _stars[i].transform.position.y;
+                minY = Mathf.Min(minY, y);
+                maxY = Mathf.Max(maxY, y);
+                continue;
+            }
             Vector3 dir = Random.onUnitSphere;
             float dist = Random.Range(minDistance, maxDistance);
             _stars[i].transform.position = _target.position + dir * dist;
-            
-            float y = _stars[i].transform.position.y;
-            minY = Mathf.Min(minY, y);
-            maxY = Mathf.Max(maxY, y);
+
+            float y2 = _stars[i].transform.position.y;
+            minY = Mathf.Min(minY, y2);
+            maxY = Mathf.Max(maxY, y2);
         }
-        
-        Debug.Log($"[StarField] Repositioned stars. Y range: {minY:F0} to {maxY:F0} (spread: {maxY - minY:F0}m)");
+
+        Debug.Log($"[StarField] Repositioned behind stars. Y range: {minY:F0} to {maxY:F0} (spread: {maxY - minY:F0}m)");
     }
 
     private GameObject CreateStar(Vector3 center)

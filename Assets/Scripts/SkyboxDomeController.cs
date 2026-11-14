@@ -48,8 +48,7 @@ public class SkyboxDomeController : MonoBehaviour
         }
 
         // black background so dome renders
-        if (Camera.main != null) Camera.main.clearFlags = CameraClearFlags.SolidColor;
-        Camera.main.backgroundColor = Color.black;
+        if (Camera.main != null) { Camera.main.clearFlags = CameraClearFlags.SolidColor; Camera.main.backgroundColor = Color.black; }
     }
 
     void Update()
@@ -90,7 +89,7 @@ public class SkyboxDomeController : MonoBehaviour
             var sys = systems[idx];
             var radiusField = sys.GetType().GetField("radius");
             float radius = radiusField != null ? (float)radiusField.GetValue(sys) : 200f;
-            if (minDist > radius * 2.5f) return -1;
+            if (minDist > radius * 1.2f) return -1;
         }
         return idx;
     }

@@ -1,8 +1,11 @@
 using UnityEngine;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 /// <summary>
 /// A dynamic gas-giant planet: procedural banded texture, slow spin, gentle orbit.
-/// Spawned into the endless space stream like asteroids.
+/// Orbits on the transform (deterministic, no rigidbody drift).
 /// </summary>
 public class GasGiant : MonoBehaviour
 {
@@ -13,22 +16,14 @@ public class GasGiant : MonoBehaviour
     public float orbitSpeed = 0.05f;
     public float orbitRadius = 20f;
 
-    private Rigidbody _rb;
     private Vector3 _orbitCenter;
     private Vector3 _spinAxis;
 
     void Start()
     {
-        _rb = GetComponent<Rigidbody>();
-        if (_rb == null) _rb = gameObject.AddComponent<Rigidbody>();
-        _rb.useGravity = false;
         // fly-throughable: colliders are triggers (no solid collision)
         foreach (var c in GetComponents<Collider>()) c.isTrigger = true;
         foreach (var c in GetComponentsInChildren<Collider>()) c.isTrigger = true;
-        _rb.linearDamping = 0.2f;
-        _rb.angularDamping = 0.1f;
-        _rb.mass = 10000f;
-        _rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
 
         if (useOrbitCenter)
             _orbitCenter = orbitCenter;
@@ -38,14 +33,6 @@ public class GasGiant : MonoBehaviour
         spinSpeed = Random.Range(0.5f, 2f);
         orbitSpeed = Random.Range(0.001f, 0.005f);
         orbitRadius = Random.Range(40f, 120f);
-
-        _rb.angularVelocity = _spinAxis * (spinSpeed * Mathf.Deg2Rad);
-        // initial tangential velocity
-        Vector3 toCenter = transform.position - _orbitCenter;
-        if (toCenter.sqrMagnitude < 0.01f) toCenter = Vector3.right;
-        Vector3 tangent = Vector3.Cross(Vector3.up, toCenter).normalized;
-        if (tangent.sqrMagnitude < 0.01f) tangent = Vector3.right;
-        _rb.linearVelocity = tangent * (orbitSpeed * orbitRadius);
 
         // Add rings (random, ~60% chance)
         if (Random.value < 0.6f)
@@ -57,21 +44,15 @@ public class GasGiant : MonoBehaviour
         GenerateTexture();
     }
 
-    void FixedUpdate()
+    void Update()
     {
-        if (_rb == null) return;
-        Vector3 toCenter = _orbitCenter - transform.position;
-        float dist = toCenter.magnitude;
-        if (dist > 0.01f)
-        {
-            float centripetal = _rb.mass * (orbitSpeed * orbitSpeed * dist);
-            centripetal = Mathf.Min(centripetal, 200f);
-            _rb.AddForce(toCenter.normalized * centripetal, ForceMode.Force);
-        }
+        transform.RotateAround(_orbitCenter, Vector3.up, orbitSpeed * 60f * Time.deltaTime);
+        transform.Rotate(_spinAxis, spinSpeed * 60f * Time.deltaTime);
     }
 
     private void AddRings()
     {
+#if UNITY_EDITOR
         string ringMeshPath = "Assets/Mwester Studios/Simple Space Starter Kit/Models/Planet Rings.fbx";
         var ringAsset = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(ringMeshPath);
         if (ringAsset == null) return;
@@ -81,12 +62,10 @@ public class GasGiant : MonoBehaviour
         ring.name = "Rings";
         ring.transform.SetParent(transform, false);
         ring.transform.localPosition = Vector3.zero;
-        ring.transform.localRotation = Quaternion.Euler(90f, 0f, 0f); // flat around equator
-        // scale ring to match planet (planet radius ~0.5 in local, ring is 64 units)
+        ring.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
         float ringScale = 1f / 64f * 1.8f;
         ring.transform.localScale = new Vector3(ringScale, ringScale, ringScale);
 
-        // apply a random ring material
         string[] ringMats = new string[] {
             "Assets/Mwester Studios/Simple Space Starter Kit/Materials/Planet Materials/Rings 0.mat",
             "Assets/Mwester Studios/Simple Space Starter Kit/Materials/Planet Materials/Rings 1.mat",
@@ -103,6 +82,7 @@ public class GasGiant : MonoBehaviour
             var mat = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>(matPath);
             if (mat != null) ringRend.sharedMaterial = mat;
         }
+#endif
     }
 
     private void GenerateTexture()
@@ -133,7 +113,6 @@ public class GasGiant : MonoBehaviour
             float dy = (y / (float)h) - 0.4f;
             float spot = Mathf.Exp(-(dx * dx * 20f + dy * dy * 40f));
             bandColor = Color.Lerp(bandColor, new Color(0.6f, 0.2f, 0.15f), spot * 0.6f);
-            // add subtle horizontal streaks
             float streak = Mathf.PerlinNoise(x * 0.02f, v * 12f);
             bandColor = Color.Lerp(bandColor, bandColor * 1.1f, streak * 0.15f);
             px[y * w + x] = bandColor;
@@ -156,7 +135,4 @@ public class GasGiant : MonoBehaviour
         }
         rend.material = mat;
     }
-
-
-
 }
