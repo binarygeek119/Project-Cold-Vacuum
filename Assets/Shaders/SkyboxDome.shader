@@ -14,7 +14,7 @@ Shader "Custom/SkyboxDome"
         {
             Name "ForwardUnlit"
             Tags { "LightMode" = "UniversalForward" }
-            Cull Off
+            Cull Front
             ZWrite Off
             ZTest Always
             HLSLPROGRAM

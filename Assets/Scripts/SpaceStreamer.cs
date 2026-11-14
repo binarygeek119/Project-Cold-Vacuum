@@ -293,7 +293,9 @@ public class SpaceStreamer : MonoBehaviour
             if (sh == null) sh = Shader.Find("Standard");
             var mat = new Material(sh);
             Color sc = new Color(1f, 0.95f, 0.8f);
+            mat.SetFloat("_Surface", 1f);
             mat.SetFloat("_Blend", 2f);
+            mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
             mat.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.One);
             mat.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.One);
             mat.SetFloat("_ZWrite", 0f);
@@ -496,9 +498,12 @@ public class SpaceStreamer : MonoBehaviour
             st.transform.SetParent(root.transform, false);
             st.transform.localPosition = stOffset;
             st.transform.localRotation = Quaternion.Euler(0f, (float)stationRng.NextDouble() * 360f, 0f);
-            var stCT = st.AddComponent<CompassTarget>();
-            stCT.displayColor = Color.white;
-            stCT.displayName = "Station";
+            if (st.GetComponent<CompassTarget>() == null)
+            {
+                var stCT = st.AddComponent<CompassTarget>();
+                stCT.displayColor = Color.white;
+                stCT.displayName = "Station";
+            }
         }
 
         // --- Enemy ---
@@ -516,9 +521,12 @@ public class SpaceStreamer : MonoBehaviour
             ev.transform.localPosition = eOffset;
             ev.transform.localRotation = Quaternion.Euler(0f, (float)enemyRng.NextDouble() * 360f, 0f);
             if (ev.GetComponent<EnemyShip>() == null) ev.AddComponent<EnemyShip>();
-            var evCT = ev.AddComponent<CompassTarget>();
-            evCT.displayColor = new Color(1f, 0.3f, 0.3f);
-            evCT.displayName = "Enemy";
+            if (ev.GetComponent<CompassTarget>() == null)
+            {
+                var evCT = ev.AddComponent<CompassTarget>();
+                evCT.displayColor = new Color(1f, 0.3f, 0.3f);
+                evCT.displayName = "Enemy";
+            }
         }
 
         // --- Nebula ---
